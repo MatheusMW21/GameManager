@@ -8,3 +8,12 @@ export interface Game {
     };
     releaseDate?: string;
 }
+
+export interface BacklogGame {
+    id: number;
+    title: string;
+    coverUrl?: string;
+    status: number; 
+    platform: string;
+    estimatedTime: number;
+}

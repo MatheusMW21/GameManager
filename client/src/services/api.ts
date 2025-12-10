@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { BacklogGame } from '../types/game';
 
 export const api = axios.create({
     baseURL: 'http://localhost:5282/api',
@@ -19,6 +20,11 @@ export const gameService = {
     },
     addToBacklog: async (game: CreateGameDto) => {
         const response = await api.post('/Game', game); 
+        return response.data;
+    },
+
+    getBacklog: async (): Promise<BacklogGame[]> => {
+        const response = await api.get('/Game');
         return response.data;
     }
 }
