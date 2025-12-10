@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using GameBacklog.API.Models;
 
 namespace GameBacklog.API.Dtos;
@@ -15,4 +16,13 @@ public class CreateGameDto
     public GameStatus Status { get; set; } = GameStatus.Planning;
     [MaxLength(1000)]
     public string? Comments { get; set; }
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal Price { get; set; }
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal PurchasePrice { get; set; } = 0;
+    public DateTime? PurchaseDate { get; set; }
+    [MaxLength(50)]
+    public string? Store { get; set; }
+    [MaxLength(200)]
+    public string? DroppedReason { get; set; }
 }

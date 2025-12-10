@@ -18,7 +18,8 @@ import {
   ClipboardList, 
   Play,
   Check,
-  Search
+  Search,
+  Wallet 
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -37,6 +38,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => { loadGames(); }, []);
+
+  // --- AÇÕES ---
 
   const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que quer remover este jogo do backlog?")) return;
@@ -62,6 +65,7 @@ export default function Dashboard() {
     }
   };
 
+  // Atualização Completa (Vinda do Modal)
   const handleUpdateFullGame = async (updatedGame: BacklogGame) => {
     try {
       await gameService.updateGame(updatedGame.id, updatedGame);
@@ -73,11 +77,17 @@ export default function Dashboard() {
     }
   };
 
+  // --- CÁLCULOS & ESTATÍSTICAS ---
+  
+  // Calcula o valor total investido (soma dos purchasePrice)
+  const totalValue = games.reduce((acc, game) => acc + (game.purchasePrice || 0), 0);
+
   const stats = {
     total: games.length,
     playing: games.filter(g => g.status === 1).length,
     completed: games.filter(g => g.status === 2).length,
     planning: games.filter(g => g.status === 0).length,
+    value: totalValue
   };
 
   return (
@@ -101,12 +111,19 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats Cards - Agora com 5 colunas para caber o Financeiro */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatsCard title="Total" value={stats.total} icon={<Gamepad2 className="text-purple-500 h-5 w-5" />} />
           <StatsCard title="Jogando" value={stats.playing} icon={<Clock className="text-blue-500 h-5 w-5" />} />
           <StatsCard title="Zerados" value={stats.completed} icon={<CheckCircle className="text-green-500 h-5 w-5" />} />
           <StatsCard title="Na Fila" value={stats.planning} icon={<ClipboardList className="text-slate-500 h-5 w-5" />} />
+          
+          {/* Novo Card Financeiro */}
+          <StatsCard 
+            title="Investido" 
+            value={`R$ ${stats.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+            icon={<Wallet className="text-emerald-500 h-5 w-5" />} 
+          />
         </div>
 
         {/* Grid de Jogos */}
@@ -142,9 +159,11 @@ export default function Dashboard() {
   );
 }
 
+// --- SUB-COMPONENTES ---
+
 interface StatsCardProps {
   title: string;
-  value: number;
+  value: number | string; 
   icon: React.ReactNode;
 }
 
@@ -152,11 +171,13 @@ function StatsCard({ title, value, icon }: StatsCardProps) {
   return (
     <Card className="bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 transition-colors">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-slate-400 uppercase tracking-wider">{title}</CardTitle>
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-white">{value}</div>
+        <div className="text-2xl font-bold text-white truncate" title={String(value)}>
+            {value}
+        </div>
       </CardContent>
     </Card>
   );
@@ -174,12 +195,14 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
   const getStatusStyle = (s: number) => {
     if (s === 1) return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     if (s === 2) return "bg-green-500/10 text-green-400 border-green-500/20";
+    if (s === 3) return "bg-red-500/10 text-red-400 border-red-500/20"; // Style para Dropped
     return "bg-slate-500/10 text-slate-400 border-slate-500/20";
   };
   
   const getStatusText = (s: number) => {
     if (s === 1) return "Jogando";
     if (s === 2) return "Zerado";
+    if (s === 3) return "Dropado";
     return "Planejando";
   };
 
@@ -199,7 +222,7 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
                 {getStatusText(game.status)}
             </Badge>
 
-            {/* Badge de Plataforma (se não for TBD) */}
+            {/* Badge de Plataforma */}
             {game.platform && game.platform !== "TBD" && (
               <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] h-5 bg-black/80 text-white border-none">
                 {game.platform}
@@ -210,33 +233,38 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
         <div className="p-4 flex-1 flex flex-col">
             <h3 className="font-bold text-white truncate mb-1 text-lg" title={game.title}>{game.title}</h3>
             
-            {/* Exibe a nota se houver */}
-            <div className="text-xs text-slate-500 mb-4 h-4 flex items-center gap-1">
-              {game.rating ? (
+            {/* Linha de Info: Nota e Preço */}
+            <div className="flex items-center gap-3 text-xs text-slate-500 mb-4 h-4">
+              {game.rating && game.rating > 0 ? (
                  <span className="text-yellow-500 font-bold flex items-center gap-1">
-                   ★ {game.rating}/10
+                   ★ {game.rating}
+                 </span>
+              ) : null}
+              
+              {game.purchasePrice && game.purchasePrice > 0 ? (
+                 <span className="text-emerald-500 flex items-center gap-1">
+                   R$ {game.purchasePrice}
                  </span>
               ) : null}
             </div>
             
             <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-800">
                 <div className="flex gap-1">
-                    {/* Botão Jogar */}
+                    {/* Botões de Status Rápido (Só mostra se não estiver naquele status) */}
                     {game.status !== 1 && (
                         <Button 
                           size="icon" variant="ghost" 
                           className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-950/30" 
-                          onClick={() => onStatusChange(1)} title="Marcar como Jogando"
+                          onClick={() => onStatusChange(1)} title="Jogar"
                         >
                            <Play size={16} />
                         </Button>
                     )}
-                    {/* Botão Zerar */}
                     {game.status !== 2 && (
                         <Button 
                           size="icon" variant="ghost" 
                           className="h-8 w-8 text-slate-400 hover:text-green-400 hover:bg-green-950/30" 
-                          onClick={() => onStatusChange(2)} title="Marcar como Zerado"
+                          onClick={() => onStatusChange(2)} title="Zerar"
                         >
                            <Check size={16} />
                         </Button>
@@ -251,7 +279,7 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
                 <Button 
                   size="icon" variant="ghost" 
                   className="h-8 w-8 text-slate-600 hover:text-red-400 hover:bg-red-950/30" 
-                  onClick={onDelete} title="Remover do Backlog"
+                  onClick={onDelete} title="Remover"
                 >
                     <Trash2 size={16} />
                 </Button>

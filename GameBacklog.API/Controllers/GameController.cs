@@ -3,6 +3,7 @@ using GameBacklog.API.Dtos;
 using GameBacklog.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 namespace GameBacklog.API.Controllers;
 
 [Route("api/[controller]")]
@@ -10,15 +11,16 @@ namespace GameBacklog.API.Controllers;
 public class GameController : ControllerBase
 {
     private readonly AppDbContext _context;
+
     public GameController(AppDbContext context)
     {
         _context = context;
     }
-
+    
     [HttpGet]
     public async Task<ActionResult<IEnumerable<GameBacklogItem>>> GetGames()
     {
-        return await _context.Games.ToListAsync();
+        return await _context.Games.OrderByDescending(g => g.CreatedAt).ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -57,9 +59,26 @@ public class GameController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateGame(int id, [FromBody] GameBacklogItem game)
     {
-        if (id != game.Id) return BadRequest();
+        if (id != game.Id)
+        {
+            return BadRequest("ID do jogo não corresponde ao ID da URL.");
+        }
 
-        _context.Entry(game).State = EntityState.Modified;
+        var existingGame = await _context.Games.FindAsync(id);
+        if (existingGame == null)
+        {
+            return NotFound();
+        }
+
+        existingGame.Title = game.Title;
+        existingGame.Platform = game.Platform;
+        existingGame.Status = game.Status;
+        existingGame.Rating = game.Rating;
+        existingGame.Comments = game.Comments;
+        existingGame.CoverUrl = game.CoverUrl;
+        existingGame.PurchasePrice = game.PurchasePrice;
+        existingGame.Store = game.Store;
+        existingGame.DroppedReason = game.DroppedReason;
 
         try
         {
@@ -67,8 +86,14 @@ public class GameController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!_context.Games.Any(e => e.Id == id)) return NotFound();
-            else throw;
+            if (!_context.Games.Any(e => e.Id == id))
+            {
+                return NotFound();
+            }
+            else
+            {
+                throw;
+            }
         }
 
         return NoContent();
@@ -78,7 +103,10 @@ public class GameController : ControllerBase
     public async Task<IActionResult> DeleteGame(int id)
     {
         var game = await _context.Games.FindAsync(id);
-        if (game == null) return NotFound();
+        if (game == null)
+        {
+            return NotFound();
+        }
 
         _context.Games.Remove(game);
         await _context.SaveChangesAsync();
