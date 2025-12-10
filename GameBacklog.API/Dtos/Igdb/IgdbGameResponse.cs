@@ -5,6 +5,8 @@ namespace GameBacklog.API.Dtos.Igdb;
 
 public class IgdbGameResponse
 {
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
     [JsonPropertyName("summary")]

@@ -26,5 +26,14 @@ export const gameService = {
     getBacklog: async (): Promise<BacklogGame[]> => {
         const response = await api.get('/Game');
         return response.data;
+    },
+    updateGame: async (id: number, game: any) => {
+        const response = await api.put(`/Game/${id}`, game);
+        return response.data;
+    },
+
+    deleteGame: async (id: number) => {
+        const response = await api.delete(`/Game/${id}`);
+        return response.data;
     }
 }

@@ -55,12 +55,9 @@ public class GameController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutGame(int id, GameBacklogItem game)
+    public async Task<IActionResult> UpdateGame(int id, [FromBody] GameBacklogItem game)
     {
-        if (id != game.Id)
-        {
-            return BadRequest();
-        }
+        if (id != game.Id) return BadRequest();
 
         _context.Entry(game).State = EntityState.Modified;
 
@@ -70,14 +67,8 @@ public class GameController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!_context.Games.Any(e => e.Id == id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
+            if (!_context.Games.Any(e => e.Id == id)) return NotFound();
+            else throw;
         }
 
         return NoContent();
@@ -87,10 +78,7 @@ public class GameController : ControllerBase
     public async Task<IActionResult> DeleteGame(int id)
     {
         var game = await _context.Games.FindAsync(id);
-        if (game == null)
-        {
-            return NotFound();
-        }
+        if (game == null) return NotFound();
 
         _context.Games.Remove(game);
         await _context.SaveChangesAsync();
