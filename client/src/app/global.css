@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Configuração base para garantir o modo escuro em toda a página */
+body {
+  background-color: #020617; /* Equivalente ao bg-slate-950 */
+  color: #f1f5f9;            /* Equivalente ao text-slate-100 */
+}
+
+/* Opcional: Estilo para a barra de rolagem ficar escura (funciona no Chrome/Edge) */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155; 
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; 
+}
