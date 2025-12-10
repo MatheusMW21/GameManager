@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { gameService } from '@/services/api';
 import { BacklogGame } from '@/types/game';
+import { EditGameDialog } from "@/components/EditGameDialog"; 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +15,10 @@ import {
   Gamepad2, 
   ArrowLeft, 
   Clock, 
-  ClipboardList, // Novo ícone para substituir o emoji
+  ClipboardList, 
   Play,
-  Check
+  Check,
+  Search
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -37,8 +39,7 @@ export default function Dashboard() {
   useEffect(() => { loadGames(); }, []);
 
   const handleDelete = async (id: number) => {
-    // Usamos window.confirm por simplicidade, num app real usaríamos um Dialog do Shadcn
-    if (!confirm("Tem certeza que quer remover este jogo?")) return;
+    if (!confirm("Tem certeza que quer remover este jogo do backlog?")) return;
     try {
       await gameService.deleteGame(id);
       setGames(games.filter(g => g.id !== id));
@@ -53,9 +54,22 @@ export default function Dashboard() {
       const updatedGame = { ...game, status: newStatus };
       await gameService.updateGame(game.id, updatedGame);
       setGames(games.map(g => g.id === game.id ? updatedGame : g));
-      toast.success("Status atualizado!");
+      
+      const statusText = newStatus === 1 ? "Jogando" : "Zerado";
+      toast.success(`Status alterado para: ${statusText}`);
     } catch (e) {
       toast.error("Erro ao atualizar status.");
+    }
+  };
+
+  const handleUpdateFullGame = async (updatedGame: BacklogGame) => {
+    try {
+      await gameService.updateGame(updatedGame.id, updatedGame);
+      setGames(games.map(g => g.id === updatedGame.id ? updatedGame : g));
+      toast.success("Detalhes atualizados com sucesso!");
+    } catch (e) {
+      toast.error("Erro ao salvar os detalhes.");
+      throw e; 
     }
   };
 
@@ -95,15 +109,20 @@ export default function Dashboard() {
           <StatsCard title="Na Fila" value={stats.planning} icon={<ClipboardList className="text-slate-500 h-5 w-5" />} />
         </div>
 
-        {/* Loading / Empty / Grid */}
+        {/* Grid de Jogos */}
         {loading ? (
             <div className="flex justify-center py-20">
-              <span className="text-slate-500 animate-pulse">Carregando coleção...</span>
+              <span className="text-slate-500 animate-pulse flex items-center gap-2">
+                <Clock size={16} /> Carregando coleção...
+              </span>
             </div>
         ) : games.length === 0 ? (
             <div className="text-center py-20 border border-dashed border-slate-800 rounded-xl text-slate-500 bg-slate-900/50">
                 <Gamepad2 className="mx-auto h-12 w-12 mb-4 opacity-20" />
                 <p>Você ainda não tem jogos salvos.</p>
+                <Link href="/" className="text-purple-400 hover:underline mt-2 flex items-center justify-center gap-2">
+                  <Search size={16} /> Começar a explorar
+                </Link>
             </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -113,6 +132,7 @@ export default function Dashboard() {
                 game={game} 
                 onDelete={() => handleDelete(game.id)}
                 onStatusChange={(status) => handleStatusChange(game, status)}
+                onUpdate={handleUpdateFullGame}
               />
             ))}
           </div>
@@ -122,8 +142,6 @@ export default function Dashboard() {
   );
 }
 
-// --- SUB-COMPONENTES TIPADOS ---
-
 interface StatsCardProps {
   title: string;
   value: number;
@@ -132,7 +150,7 @@ interface StatsCardProps {
 
 function StatsCard({ title, value, icon }: StatsCardProps) {
   return (
-    <Card className="bg-slate-900 border-slate-800 shadow-sm">
+    <Card className="bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 transition-colors">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">{title}</CardTitle>
         {icon}
@@ -147,12 +165,12 @@ function StatsCard({ title, value, icon }: StatsCardProps) {
 interface DashboardGameCardProps {
   game: BacklogGame;
   onDelete: () => void;
-  onStatusChange: (status: number) => void; // AQUI ESTAVA O ERRO: Tipagem explícita
+  onStatusChange: (status: number) => void;
+  onUpdate: (game: BacklogGame) => Promise<void>;
 }
 
-function DashboardGameCard({ game, onDelete, onStatusChange }: DashboardGameCardProps) {
+function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: DashboardGameCardProps) {
   
-  // Função auxiliar para cores de status (Tailwind)
   const getStatusStyle = (s: number) => {
     if (s === 1) return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     if (s === 2) return "bg-green-500/10 text-green-400 border-green-500/20";
@@ -166,7 +184,7 @@ function DashboardGameCard({ game, onDelete, onStatusChange }: DashboardGameCard
   };
 
   return (
-    <Card className="bg-slate-900 border-slate-800 overflow-hidden group flex flex-col h-full hover:border-slate-700 transition-all shadow-md">
+    <Card className="bg-slate-900 border-slate-800 overflow-hidden group flex flex-col h-full hover:border-purple-500/50 transition-all shadow-md">
         <div className="relative h-40 bg-slate-950">
             {game.coverUrl ? (
                 <img src={game.coverUrl} alt={game.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
@@ -175,47 +193,65 @@ function DashboardGameCard({ game, onDelete, onStatusChange }: DashboardGameCard
                   <Gamepad2 size={32} opacity={0.5} />
                 </div>
             )}
+            
+            {/* Badge de Status */}
             <Badge variant="outline" className={`absolute top-2 right-2 backdrop-blur-md ${getStatusStyle(game.status)}`}>
                 {getStatusText(game.status)}
             </Badge>
+
+            {/* Badge de Plataforma (se não for TBD) */}
+            {game.platform && game.platform !== "TBD" && (
+              <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] h-5 bg-black/80 text-white border-none">
+                {game.platform}
+              </Badge>
+            )}
         </div>
         
         <div className="p-4 flex-1 flex flex-col">
-            <h3 className="font-bold text-white truncate mb-4 text-lg" title={game.title}>{game.title}</h3>
+            <h3 className="font-bold text-white truncate mb-1 text-lg" title={game.title}>{game.title}</h3>
+            
+            {/* Exibe a nota se houver */}
+            <div className="text-xs text-slate-500 mb-4 h-4 flex items-center gap-1">
+              {game.rating ? (
+                 <span className="text-yellow-500 font-bold flex items-center gap-1">
+                   ★ {game.rating}/10
+                 </span>
+              ) : null}
+            </div>
             
             <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-800">
-                {/* Botões de Ação Rápida */}
-                <div className="flex gap-2">
+                <div className="flex gap-1">
+                    {/* Botão Jogar */}
                     {game.status !== 1 && (
                         <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 px-2 text-slate-400 hover:text-blue-400 hover:bg-blue-950/30" 
-                          onClick={() => onStatusChange(1)}
-                          title="Marcar como Jogando"
+                          size="icon" variant="ghost" 
+                          className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-950/30" 
+                          onClick={() => onStatusChange(1)} title="Marcar como Jogando"
                         >
                            <Play size={16} />
                         </Button>
                     )}
+                    {/* Botão Zerar */}
                     {game.status !== 2 && (
                         <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 px-2 text-slate-400 hover:text-green-400 hover:bg-green-950/30" 
-                          onClick={() => onStatusChange(2)}
-                          title="Marcar como Zerado"
+                          size="icon" variant="ghost" 
+                          className="h-8 w-8 text-slate-400 hover:text-green-400 hover:bg-green-950/30" 
+                          onClick={() => onStatusChange(2)} title="Marcar como Zerado"
                         >
                            <Check size={16} />
                         </Button>
                     )}
+                    
+                    {/* --- BOTÃO DE EDITAR (MODAL) --- */}
+                    <EditGameDialog game={game} onUpdate={onUpdate} />
+
                 </div>
                 
+                {/* Botão Excluir */}
                 <Button 
-                  size="icon" 
-                  variant="ghost" 
+                  size="icon" variant="ghost" 
                   className="h-8 w-8 text-slate-600 hover:text-red-400 hover:bg-red-950/30" 
-                  onClick={onDelete}
-                  title="Remover do Backlog"
+                  onClick={onDelete} title="Remover do Backlog"
                 >
                     <Trash2 size={16} />
                 </Button>

@@ -16,4 +16,6 @@ export interface BacklogGame {
     status: number; 
     platform: string;
     estimatedTime: number;
+    rating?: number;
+    comments?: string;
 }
