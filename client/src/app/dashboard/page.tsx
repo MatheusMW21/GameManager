@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { gameService } from '@/services/api';
 import { BacklogGame } from '@/types/game';
 import { EditGameDialog } from "@/components/EditGameDialog"; 
+import { SteamPriceBadge } from "@/components/SteamPriceBadge"; // <--- Importante: Componente do Preço
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +19,14 @@ import {
   ClipboardList, 
   Play,
   Check,
-  Search,
-  Wallet 
+  Search
 } from "lucide-react";
 
 export default function Dashboard() {
   const [games, setGames] = useState<BacklogGame[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Carregar dados iniciais
   const loadGames = async () => {
     try {
       const data = await gameService.getBacklog();
@@ -52,6 +53,7 @@ export default function Dashboard() {
     }
   };
 
+  // Atualização Rápida (Apenas Status)
   const handleStatusChange = async (game: BacklogGame, newStatus: number) => {
     try {
       const updatedGame = { ...game, status: newStatus };
@@ -77,17 +79,12 @@ export default function Dashboard() {
     }
   };
 
-  // --- CÁLCULOS & ESTATÍSTICAS ---
-  
-  // Calcula o valor total investido (soma dos purchasePrice)
-  const totalValue = games.reduce((acc, game) => acc + (game.purchasePrice || 0), 0);
-
+  // --- CÁLCULOS ---
   const stats = {
     total: games.length,
     playing: games.filter(g => g.status === 1).length,
     completed: games.filter(g => g.status === 2).length,
     planning: games.filter(g => g.status === 0).length,
-    value: totalValue
   };
 
   return (
@@ -111,19 +108,12 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Stats Cards - Agora com 5 colunas para caber o Financeiro */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatsCard title="Total" value={stats.total} icon={<Gamepad2 className="text-purple-500 h-5 w-5" />} />
           <StatsCard title="Jogando" value={stats.playing} icon={<Clock className="text-blue-500 h-5 w-5" />} />
           <StatsCard title="Zerados" value={stats.completed} icon={<CheckCircle className="text-green-500 h-5 w-5" />} />
           <StatsCard title="Na Fila" value={stats.planning} icon={<ClipboardList className="text-slate-500 h-5 w-5" />} />
-          
-          {/* Novo Card Financeiro */}
-          <StatsCard 
-            title="Investido" 
-            value={`R$ ${stats.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
-            icon={<Wallet className="text-emerald-500 h-5 w-5" />} 
-          />
         </div>
 
         {/* Grid de Jogos */}
@@ -163,7 +153,7 @@ export default function Dashboard() {
 
 interface StatsCardProps {
   title: string;
-  value: number | string; 
+  value: number;
   icon: React.ReactNode;
 }
 
@@ -175,7 +165,7 @@ function StatsCard({ title, value, icon }: StatsCardProps) {
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-white truncate" title={String(value)}>
+        <div className="text-2xl font-bold text-white truncate">
             {value}
         </div>
       </CardContent>
@@ -195,7 +185,7 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
   const getStatusStyle = (s: number) => {
     if (s === 1) return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     if (s === 2) return "bg-green-500/10 text-green-400 border-green-500/20";
-    if (s === 3) return "bg-red-500/10 text-red-400 border-red-500/20"; // Style para Dropped
+    if (s === 3) return "bg-red-500/10 text-red-400 border-red-500/20";
     return "bg-slate-500/10 text-slate-400 border-slate-500/20";
   };
   
@@ -233,24 +223,26 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
         <div className="p-4 flex-1 flex flex-col">
             <h3 className="font-bold text-white truncate mb-1 text-lg" title={game.title}>{game.title}</h3>
             
-            {/* Linha de Info: Nota e Preço */}
-            <div className="flex items-center gap-3 text-xs text-slate-500 mb-4 h-4">
+            {/* Linha de Info: Nota e PREÇO STEAM */}
+            <div className="flex items-center gap-3 text-xs text-slate-500 mb-4 h-5">
+              
+              {/* Nota */}
               {game.rating && game.rating > 0 ? (
                  <span className="text-yellow-500 font-bold flex items-center gap-1">
-                   ★ {game.rating}
+                   ★ {game.rating}/10
                  </span>
               ) : null}
+
+              {/* Badge de Preço da Steam (Só aparece se tiver ID) */}
+              {game.steamAppId && (
+                 <SteamPriceBadge steamId={game.steamAppId} />
+              )}
               
-              {game.purchasePrice && game.purchasePrice > 0 ? (
-                 <span className="text-emerald-500 flex items-center gap-1">
-                   R$ {game.purchasePrice}
-                 </span>
-              ) : null}
             </div>
             
             <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-800">
                 <div className="flex gap-1">
-                    {/* Botões de Status Rápido (Só mostra se não estiver naquele status) */}
+                    {/* Botões de Ação */}
                     {game.status !== 1 && (
                         <Button 
                           size="icon" variant="ghost" 
@@ -270,9 +262,8 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
                         </Button>
                     )}
                     
-                    {/* --- BOTÃO DE EDITAR (MODAL) --- */}
+                    {/* Botão Editar (Modal) */}
                     <EditGameDialog game={game} onUpdate={onUpdate} />
-
                 </div>
                 
                 {/* Botão Excluir */}

@@ -17,12 +17,12 @@ public class CreateGameDto
     [MaxLength(1000)]
     public string? Comments { get; set; }
     [Column(TypeName = "decimal(18,2)")]
-    public decimal Price { get; set; }
-    [Column(TypeName = "decimal(18,2)")]
     public decimal PurchasePrice { get; set; } = 0;
     public DateTime? PurchaseDate { get; set; }
     [MaxLength(50)]
     public string? Store { get; set; }
     [MaxLength(200)]
     public string? DroppedReason { get; set; }
+    [MaxLength(50)]
+    public string? SteamAppId { get; set; }
 }

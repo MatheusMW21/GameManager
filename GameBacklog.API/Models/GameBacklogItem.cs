@@ -33,16 +33,9 @@ public class GameBacklogItem
     public string? Comments { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedAt { get; set; }
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal Price { get; set; } // preço na steam ou outra loja
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal PurchasePrice { get; set; } = 0; 
-
-    public DateTime? PurchaseDate { get; set; } 
-
-    [MaxLength(50)]
-    public string? Store { get; set; } 
 
     [MaxLength(200)]
     public string? DroppedReason { get; set; }
+    [MaxLength(50)]
+    public string? SteamAppId { get; set; }
 }

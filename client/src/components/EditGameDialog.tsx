@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BacklogGame } from "@/types/game";
+import { gameService } from "@/services/api"; 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, Loader2, DollarSign } from "lucide-react";
+import { Pencil, Loader2, Link as LinkIcon, Wand2 } from "lucide-react";
+import { toast } from "sonner"; // <--- Importante: Import do Toast
 
 interface EditGameDialogProps {
   game: BacklogGame;
@@ -32,24 +34,46 @@ interface EditGameDialogProps {
 export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingSteam, setIsSearchingSteam] = useState(false);
   
+  // Estados Locais
   const [platform, setPlatform] = useState(game.platform || "TBD");
   const [rating, setRating] = useState(game.rating || 0);
   const [comments, setComments] = useState(game.comments || "");
-  const [price, setPrice] = useState(game.purchasePrice || 0);
-  const [store, setStore] = useState(game.store || "");
   const [droppedReason, setDroppedReason] = useState(game.droppedReason || "");
+  const [steamAppId, setSteamAppId] = useState(game.steamAppId || "");
 
+  // Resetar estados
   useEffect(() => {
     if (open) {
         setPlatform(game.platform || "TBD");
         setRating(game.rating || 0);
         setComments(game.comments || "");
-        setPrice(game.purchasePrice || 0);
-        setStore(game.store || "");
         setDroppedReason(game.droppedReason || "");
+        setSteamAppId(game.steamAppId || "");
     }
   }, [open, game]);
+
+  // --- FUNÇÃO CORRIGIDA COM FEEDBACK ---
+  const handleAutoDetect = async () => {
+    setIsSearchingSteam(true);
+    try {
+        const id = await gameService.findSteamId(game.title);
+        
+        if (id) {
+            setSteamAppId(id);
+            toast.success("ID da Steam encontrado e preenchido!");
+        } else {
+            // Caso seja Mario, Zelda, God of War (antigo), etc.
+            toast.warning(`"${game.title}" não foi encontrado na Steam.`);
+        }
+    } catch (error) {
+        console.error("Erro na busca", error);
+        toast.error("Erro de comunicação ao buscar na Steam.");
+    } finally {
+        setIsSearchingSteam(false);
+    }
+  };
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -59,15 +83,15 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
         platform,
         rating: Number(rating),
         comments,
-        purchasePrice: Number(price),
-        store,
-        droppedReason: game.status === 3 ? droppedReason : undefined 
+        steamAppId, 
+        droppedReason: game.status === 3 ? droppedReason : null 
       };
 
       await onUpdate(updatedGame);
       setOpen(false);
     } catch (error) {
       console.error(error);
+      // O erro geral de salvamento já é tratado no pai, mas pode por toast aqui se quiser
     } finally {
       setIsLoading(false);
     }
@@ -86,11 +110,10 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
           <DialogTitle>Editar: {game.title}</DialogTitle>
         </DialogHeader>
         
-        {/* Sistema de Abas */}
         <Tabs defaultValue="geral" className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-slate-900 border border-slate-800">
             <TabsTrigger value="geral" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Geral</TabsTrigger>
-            <TabsTrigger value="extra" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Financeiro & Detalhes</TabsTrigger>
+            <TabsTrigger value="extra" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Integrações</TabsTrigger>
           </TabsList>
 
           {/* ABA 1: GERAL */}
@@ -149,30 +172,44 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
             </div>
           </TabsContent>
 
-          {/* ABA 2: FINANCEIRO */}
+          {/* ABA 2: INTEGRAÇÕES */}
           <TabsContent value="extra" className="space-y-4 py-4 animate-in fade-in slide-in-from-right-1">
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right text-slate-400">Preço Pago</Label>
-                <div className="col-span-3 relative">
-                    <DollarSign size={14} className="absolute left-3 top-3 text-emerald-500" />
-                    <Input 
-                        type="number" 
-                        placeholder="0.00" 
-                        value={price} 
-                        onChange={e => setPrice(Number(e.target.value))} 
-                        className="pl-8 bg-slate-900 border-slate-700 text-slate-200 focus-visible:ring-emerald-500" 
-                    />
-                </div>
-            </div>
+             <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-900/50 mb-4">
+                <p className="text-sm text-blue-200 leading-relaxed">
+                   Cole o <b>Steam App ID</b> para monitorar preços ou clique no botão mágico para tentar encontrar automaticamente.
+                </p>
+             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right text-slate-400">Loja</Label>
-                <Input 
-                    placeholder="Ex: Steam, Nuuvem, PSN..." 
-                    value={store} 
-                    onChange={e => setStore(e.target.value)} 
-                    className="col-span-3 bg-slate-900 border-slate-700 text-slate-200 focus-visible:ring-emerald-500" 
-                />
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right text-slate-400">Steam App ID</Label>
+                <div className="col-span-3 flex gap-2">
+                    <div className="relative flex-1">
+                        <LinkIcon size={14} className="absolute left-3 top-3 text-slate-500" />
+                        <Input 
+                            placeholder="Ex: 1245620" 
+                            value={steamAppId} 
+                            onChange={e => setSteamAppId(e.target.value)} 
+                            className="pl-8 bg-slate-900 border-slate-700 text-slate-200 focus-visible:ring-blue-500 font-mono" 
+                        />
+                    </div>
+
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleAutoDetect}
+                        disabled={isSearchingSteam}
+                        className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 min-w-[90px]"
+                        title="Buscar ID na Steam automaticamente"
+                    >
+                        {isSearchingSteam ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <>
+                                <Wand2 size={16} className="mr-2" /> Auto
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
           </TabsContent>
         </Tabs>

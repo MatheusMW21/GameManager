@@ -35,5 +35,15 @@ export const gameService = {
     deleteGame: async (id: number) => {
         const response = await api.delete(`/Game/${id}`);
         return response.data;
+    },
+
+    getSteamPrice: async (steamAppId: string) => {
+        const response = await api.get(`/Steam/price/${steamAppId}`);
+        return response.data; 
+    },
+
+    findSteamId: async (gameName: string) => {
+        const response = await api.get(`/Steam/search/${gameName}`);
+        return response.data.steamId; 
     }
 }

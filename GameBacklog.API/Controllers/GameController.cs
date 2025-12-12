@@ -47,7 +47,8 @@ public class GameController : ControllerBase
             ExternalId = request.ExternalId,
             CreatedAt = DateTime.UtcNow,
             TimePlayed = 0,
-            EstimatedTime = 0
+            EstimatedTime = 0,
+            SteamAppId = request.SteamAppId
         };
 
         _context.Games.Add(game);
@@ -76,9 +77,8 @@ public class GameController : ControllerBase
         existingGame.Rating = game.Rating;
         existingGame.Comments = game.Comments;
         existingGame.CoverUrl = game.CoverUrl;
-        existingGame.PurchasePrice = game.PurchasePrice;
-        existingGame.Store = game.Store;
         existingGame.DroppedReason = game.DroppedReason;
+        existingGame.SteamAppId = game.SteamAppId;
 
         try
         {

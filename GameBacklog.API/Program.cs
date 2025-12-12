@@ -37,6 +37,8 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IIgdbService, IgdbService>();
+builder.Services.AddScoped<ISteamService, SteamService>();
+builder.Services.AddHttpClient("SteamClient");
 
 var app = builder.Build();
 

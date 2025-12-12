@@ -18,8 +18,6 @@ export interface BacklogGame {
     estimatedTime: number;
     rating?: number;
     comments?: string;
-    purchasePrice?: number;
-    purchaseDate?: string;
-    store?: string;
     droppedReason?: string | null;
+    steamAppId?: string;
 }
