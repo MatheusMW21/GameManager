@@ -3,6 +3,7 @@ using GameBacklog.API.Dtos;
 using GameBacklog.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using GameBacklog.API.Services;
 
 namespace GameBacklog.API.Controllers;
 
@@ -11,10 +12,12 @@ namespace GameBacklog.API.Controllers;
 public class GameController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ISteamService _steamService;
 
-    public GameController(AppDbContext context)
+    public GameController(AppDbContext context, ISteamService steamService)
     {
         _context = context;
+        _steamService = steamService;
     }
     
     [HttpGet]
@@ -37,6 +40,17 @@ public class GameController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<GameBacklogItem>> CreateGame(CreateGameDto request)
     {
+        string? steamIdToSave = request.SteamAppId;
+
+        if (string.IsNullOrEmpty(steamIdToSave))
+        {
+            var foundId = await _steamService.SearchAppIdAsync(request.Title);
+            if (foundId.HasValue)
+            {
+                steamIdToSave = foundId.Value.ToString();
+            }
+        }
+
         var game = new GameBacklogItem
         {
             Title = request.Title,
@@ -45,10 +59,10 @@ public class GameController : ControllerBase
             Comments = request.Comments,
             CoverUrl = request.CoverUrl,
             ExternalId = request.ExternalId,
+            SteamAppId = steamIdToSave, 
             CreatedAt = DateTime.UtcNow,
             TimePlayed = 0,
-            EstimatedTime = 0,
-            SteamAppId = request.SteamAppId
+            EstimatedTime = 0
         };
 
         _context.Games.Add(game);
