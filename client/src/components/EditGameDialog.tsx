@@ -23,8 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, Loader2, Link as LinkIcon, Wand2 } from "lucide-react";
-import { toast } from "sonner"; // <--- Importante: Import do Toast
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; 
+import { Pencil, Loader2, Link as LinkIcon, Wand2, Clock, Trophy, BookOpen } from "lucide-react";
+import { toast } from "sonner";
 
 interface EditGameDialogProps {
   game: BacklogGame;
@@ -35,15 +36,18 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchingSteam, setIsSearchingSteam] = useState(false);
-  
-  // Estados Locais
+  const [isSearchingHltb, setIsSearchingHltb] = useState(false);
   const [platform, setPlatform] = useState(game.platform || "TBD");
   const [rating, setRating] = useState(game.rating || 0);
   const [comments, setComments] = useState(game.comments || "");
   const [droppedReason, setDroppedReason] = useState(game.droppedReason || "");
   const [steamAppId, setSteamAppId] = useState(game.steamAppId || "");
+  const [timeMain, setTimeMain] = useState(game.timeMain || 0);
+  const [timeExtra, setTimeExtra] = useState(game.timeExtra || 0);
+  const [timeCompletionist, setTimeCompletionist] = useState(game.timeCompletionist || 0);
+  const [myGoal, setMyGoal] = useState(game.myGoal?.toString() || "1"); 
+  const [timePlayed, setTimePlayed] = useState(game.timePlayed || 0);
 
-  // Resetar estados
   useEffect(() => {
     if (open) {
         setPlatform(game.platform || "TBD");
@@ -51,27 +55,46 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
         setComments(game.comments || "");
         setDroppedReason(game.droppedReason || "");
         setSteamAppId(game.steamAppId || "");
+        
+        setTimeMain(game.timeMain || 0);
+        setTimeExtra(game.timeExtra || 0);
+        setTimeCompletionist(game.timeCompletionist || 0);
+        setMyGoal(game.myGoal?.toString() || "1");
+        setTimePlayed(game.timePlayed || 0);
     }
   }, [open, game]);
 
-  // --- FUNÇÃO CORRIGIDA COM FEEDBACK ---
-  const handleAutoDetect = async () => {
+  const handleAutoSteam = async () => {
     setIsSearchingSteam(true);
     try {
         const id = await gameService.findSteamId(game.title);
-        
         if (id) {
             setSteamAppId(id);
-            toast.success("ID da Steam encontrado e preenchido!");
+            toast.success("ID da Steam encontrado!");
         } else {
-            // Caso seja Mario, Zelda, God of War (antigo), etc.
-            toast.warning(`"${game.title}" não foi encontrado na Steam.`);
+            toast.warning("Jogo não encontrado na Steam.");
         }
     } catch (error) {
-        console.error("Erro na busca", error);
-        toast.error("Erro de comunicação ao buscar na Steam.");
+        toast.error("Erro ao buscar na Steam.");
     } finally {
         setIsSearchingSteam(false);
+    }
+  };
+
+  const handleAutoHltb = async () => {
+    setIsSearchingHltb(true);
+    try {
+        const data = await gameService.findHltbTimes(game.title);
+        if (data) {
+            setTimeMain(data.mainStory);
+            setTimeExtra(data.mainExtra);
+            setTimeCompletionist(data.completionist);
+            toast.success("Tempos do HLTB aplicados!");
+        }
+    } catch (error) {
+        toast.warning("Não encontrado no HowLongToBeat.");
+    } finally {
+        setIsSearchingHltb(false);
     }
   };
 
@@ -83,15 +106,20 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
         platform,
         rating: Number(rating),
         comments,
-        steamAppId, 
-        droppedReason: game.status === 3 ? droppedReason : null 
+        steamAppId,
+        droppedReason: game.status === 3 ? droppedReason : null,
+        
+        timeMain: Number(timeMain),
+        timeExtra: Number(timeExtra),
+        timeCompletionist: Number(timeCompletionist),
+        myGoal: Number(myGoal),
+        timePlayed: Number(timePlayed)
       };
 
       await onUpdate(updatedGame);
       setOpen(false);
     } catch (error) {
       console.error(error);
-      // O erro geral de salvamento já é tratado no pai, mas pode por toast aqui se quiser
     } finally {
       setIsLoading(false);
     }
@@ -105,26 +133,24 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="bg-slate-950 border-slate-800 text-slate-100 sm:max-w-[500px]">
+      <DialogContent className="bg-slate-950 border-slate-800 text-slate-100 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Editar: {game.title}</DialogTitle>
         </DialogHeader>
         
         <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-slate-900 border border-slate-800">
+          <TabsList className="grid w-full grid-cols-3 bg-slate-900 border border-slate-800">
             <TabsTrigger value="geral" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Geral</TabsTrigger>
+            <TabsTrigger value="tempo" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Tempo</TabsTrigger>
             <TabsTrigger value="extra" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Integrações</TabsTrigger>
           </TabsList>
 
-          {/* ABA 1: GERAL */}
           <TabsContent value="geral" className="space-y-4 py-4 animate-in fade-in slide-in-from-left-1">
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right text-slate-400">Plataforma</Label>
                 <div className="col-span-3">
                     <Select value={platform} onValueChange={setPlatform}>
-                        <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200">
-                            <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
+                        <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-700 text-slate-200">
                             <SelectItem value="TBD">A Definir</SelectItem>
                             <SelectItem value="PC">PC (Steam/Epic)</SelectItem>
@@ -140,23 +166,18 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right text-slate-400">Nota (0-10)</Label>
                 <Input 
-                    type="number" 
-                    min={0} max={10} 
-                    value={rating} 
-                    onChange={e => setRating(Number(e.target.value))} 
-                    className="col-span-3 bg-slate-900 border-slate-700 text-slate-200 focus-visible:ring-purple-500" 
+                    type="number" min={0} max={10} 
+                    value={rating} onChange={e => setRating(Number(e.target.value))} 
+                    className="col-span-3 bg-slate-900 border-slate-700 text-slate-200" 
                 />
             </div>
 
-             {/* CAMPO CONDICIONAL: Dropado */}
-             {game.status === 3 && (
+            {game.status === 3 && (
                 <div className="grid grid-cols-4 items-center gap-4 p-3 bg-red-950/10 border border-red-900/30 rounded-lg">
-                    <Label className="text-right text-red-400 font-semibold">Motivo Drop</Label>
+                    <Label className="text-right text-red-400">Motivo Drop</Label>
                     <Input 
-                        placeholder="Ex: Muito difícil, repetitivo..." 
-                        value={droppedReason} 
-                        onChange={e => setDroppedReason(e.target.value)} 
-                        className="col-span-3 bg-red-950/20 border-red-900/50 text-red-200 placeholder:text-red-800 focus-visible:ring-red-500" 
+                        value={droppedReason} onChange={e => setDroppedReason(e.target.value)} 
+                        className="col-span-3 bg-red-950/20 border-red-900/50 text-red-200 placeholder:text-red-800" 
                     />
                 </div>
              )}
@@ -164,50 +185,108 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
             <div className="grid grid-cols-4 items-start gap-4">
                 <Label className="text-right text-slate-400 mt-2">Review</Label>
                 <Textarea 
-                    value={comments} 
-                    onChange={e => setComments(e.target.value)} 
-                    placeholder="Escreva suas observações..."
-                    className="col-span-3 bg-slate-900 border-slate-700 text-slate-200 min-h-[100px] focus-visible:ring-purple-500" 
+                    value={comments} onChange={e => setComments(e.target.value)} 
+                    className="col-span-3 bg-slate-900 border-slate-700 text-slate-200 min-h-[100px]" 
                 />
             </div>
           </TabsContent>
 
-          {/* ABA 2: INTEGRAÇÕES */}
+          <TabsContent value="tempo" className="space-y-6 py-4 animate-in fade-in slide-in-from-right-1">
+            <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                    <Label className="text-slate-400 text-xs uppercase font-bold tracking-wider">Estimativas (Horas)</Label>
+                    <Button 
+                        type="button" variant="outline" size="sm" 
+                        onClick={handleAutoHltb} disabled={isSearchingHltb}
+                        className="h-6 text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+                    >
+                        {isSearchingHltb ? <Loader2 size={12} className="animate-spin mr-1" /> : <Wand2 size={12} className="mr-1" />}
+                        Auto HLTB
+                    </Button>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10}/> História</Label>
+                        <Input type="number" value={timeMain} onChange={e => setTimeMain(Number(e.target.value))} className="bg-slate-900 border-slate-700 text-center text-slate-200" />
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-slate-500 flex items-center gap-1"><Clock size={10}/> Main + Extra</Label>
+                        <Input type="number" value={timeExtra} onChange={e => setTimeExtra(Number(e.target.value))} className="bg-slate-900 border-slate-700 text-center text-slate-200" />
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-slate-500 flex items-center gap-1"><Trophy size={10}/> Platina</Label>
+                        <Input type="number" value={timeCompletionist} onChange={e => setTimeCompletionist(Number(e.target.value))} className="bg-slate-900 border-slate-700 text-center text-slate-200" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="border-t border-slate-800 my-4"></div>
+
+            <div className="space-y-3">
+                <Label className="text-slate-400 text-xs uppercase font-bold tracking-wider">Qual seu objetivo?</Label>
+                <RadioGroup value={myGoal} onValueChange={setMyGoal} className="grid grid-cols-1 gap-2">
+                    
+                    <div className={`flex items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-slate-900 transition-colors ${myGoal === "0" ? "border-purple-500 bg-purple-900/10" : "border-slate-800"}`}>
+                        <RadioGroupItem value="0" id="goal-main" />
+                        <Label htmlFor="goal-main" className="flex-1 cursor-pointer font-normal flex justify-between text-slate-300">
+                            <span>Apenas História Principal</span>
+                            <span className="font-bold text-white">{timeMain}h</span>
+                        </Label>
+                    </div>
+
+                    <div className={`flex items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-slate-900 transition-colors ${myGoal === "1" ? "border-purple-500 bg-purple-900/10" : "border-slate-800"}`}>
+                        <RadioGroupItem value="1" id="goal-extra" />
+                        <Label htmlFor="goal-extra" className="flex-1 cursor-pointer font-normal flex justify-between text-slate-300">
+                            <span>História + Extras (Padrão)</span>
+                            <span className="font-bold text-white">{timeExtra}h</span>
+                        </Label>
+                    </div>
+
+                    <div className={`flex items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-slate-900 transition-colors ${myGoal === "2" ? "border-purple-500 bg-purple-900/10" : "border-slate-800"}`}>
+                        <RadioGroupItem value="2" id="goal-comp" />
+                        <Label htmlFor="goal-comp" className="flex-1 cursor-pointer font-normal flex justify-between text-slate-300">
+                            <span>Completista / Platina</span>
+                            <span className="font-bold text-white">{timeCompletionist}h</span>
+                        </Label>
+                    </div>
+                </RadioGroup>
+            </div>
+
+             <div className="grid grid-cols-4 items-center gap-4 pt-2">
+                <Label className="text-right text-slate-400">Jogado até agora</Label>
+                <div className="col-span-3 relative">
+                    <Input 
+                        type="number" 
+                        value={timePlayed} onChange={e => setTimePlayed(Number(e.target.value))} 
+                        className="bg-slate-900 border-slate-700 text-slate-200 pr-12" 
+                    />
+                    <span className="absolute right-3 top-2.5 text-xs text-slate-500">Horas</span>
+                </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="extra" className="space-y-4 py-4 animate-in fade-in slide-in-from-right-1">
              <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-900/50 mb-4">
-                <p className="text-sm text-blue-200 leading-relaxed">
-                   Cole o <b>Steam App ID</b> para monitorar preços ou clique no botão mágico para tentar encontrar automaticamente.
-                </p>
+                <p className="text-sm text-blue-200">Cole o ID da Steam ou busque automaticamente.</p>
              </div>
-
              <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right text-slate-400">Steam App ID</Label>
                 <div className="col-span-3 flex gap-2">
                     <div className="relative flex-1">
                         <LinkIcon size={14} className="absolute left-3 top-3 text-slate-500" />
                         <Input 
-                            placeholder="Ex: 1245620" 
-                            value={steamAppId} 
-                            onChange={e => setSteamAppId(e.target.value)} 
-                            className="pl-8 bg-slate-900 border-slate-700 text-slate-200 focus-visible:ring-blue-500 font-mono" 
+                            value={steamAppId} onChange={e => setSteamAppId(e.target.value)} 
+                            className="pl-8 bg-slate-900 border-slate-700 text-slate-200 font-mono" 
+                            placeholder="Ex: 1245620"
                         />
                     </div>
-
                     <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleAutoDetect}
-                        disabled={isSearchingSteam}
+                        type="button" variant="outline" 
+                        onClick={handleAutoSteam} disabled={isSearchingSteam} 
                         className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 min-w-[90px]"
-                        title="Buscar ID na Steam automaticamente"
                     >
-                        {isSearchingSteam ? (
-                            <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                            <>
-                                <Wand2 size={16} className="mr-2" /> Auto
-                            </>
-                        )}
+                        {isSearchingSteam ? <Loader2 size={16} className="animate-spin" /> : <><Wand2 size={16} className="mr-2" /> Auto</>}
                     </Button>
                 </div>
             </div>
@@ -217,8 +296,7 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)} className="hover:bg-slate-800 text-slate-400">Cancelar</Button>
           <Button onClick={handleSave} disabled={isLoading} className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-            Salvar Alterações
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar
           </Button>
         </DialogFooter>
       </DialogContent>

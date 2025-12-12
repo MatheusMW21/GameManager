@@ -93,6 +93,11 @@ public class GameController : ControllerBase
         existingGame.CoverUrl = game.CoverUrl;
         existingGame.DroppedReason = game.DroppedReason;
         existingGame.SteamAppId = game.SteamAppId;
+        existingGame.TimeMain = game.TimeMain;
+        existingGame.TimeExtra = game.TimeExtra;
+        existingGame.TimeCompletionist = game.TimeCompletionist;
+        existingGame.MyGoal = game.MyGoal;
+        existingGame.TimePlayed = game.TimePlayed;
 
         try
         {

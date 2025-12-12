@@ -45,5 +45,10 @@ export const gameService = {
     findSteamId: async (gameName: string) => {
         const response = await api.get(`/Steam/search/${gameName}`);
         return response.data.steamId; 
-    }
+    },
+
+    findHltbTimes: async (gameName: string) => {
+        const response = await api.get(`/Hltb/search/${gameName}`);
+        return response.data; 
+}
 }

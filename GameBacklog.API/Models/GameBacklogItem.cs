@@ -12,6 +12,12 @@ public enum GameStatus
     Dropped
 }
 
+public enum GameplayGoal
+{
+    MainStory,
+    MainPlusExtras,
+    Completionist
+}
 public class GameBacklogItem
 {
     [Key]
@@ -38,4 +44,19 @@ public class GameBacklogItem
     public string? DroppedReason { get; set; }
     [MaxLength(50)]
     public string? SteamAppId { get; set; }
+
+    public double TimeMain { get; set; }
+    public double TimeExtra { get; set; }
+    public double TimeCompletionist { get; set; }
+
+    public GameplayGoal MyGoal { get; set; }
+
+    [NotMapped]
+    public double ActualEstimatedTime => MyGoal switch
+    {
+        GameplayGoal.MainStory => TimeMain,
+        GameplayGoal.MainPlusExtras => TimeExtra,
+        GameplayGoal.Completionist => TimeCompletionist,
+        _ => 0
+    };
 }

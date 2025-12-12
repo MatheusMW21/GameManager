@@ -39,6 +39,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IIgdbService, IgdbService>();
 builder.Services.AddScoped<ISteamService, SteamService>();
 builder.Services.AddHttpClient("SteamClient");
+builder.Services.AddScoped<IHowLongToBeatService, HowLongToBeatService>();
+builder.Services.AddHttpClient("HLTB");
 
 var app = builder.Build();
 

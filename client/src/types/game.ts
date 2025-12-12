@@ -20,4 +20,9 @@ export interface BacklogGame {
     comments?: string;
     droppedReason?: string | null;
     steamAppId?: string;
+    timeMain?: number;
+    timeExtra?: number;
+    timeCompletionist?: number;
+    myGoal?: number; 
+    timePlayed?: number;
 }
