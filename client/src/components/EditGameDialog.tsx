@@ -5,22 +5,13 @@ import { BacklogGame } from "@/types/game";
 import { gameService } from "@/services/api"; 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; 
@@ -37,32 +28,53 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchingSteam, setIsSearchingSteam] = useState(false);
   const [isSearchingHltb, setIsSearchingHltb] = useState(false);
+  
+  // Geral
   const [platform, setPlatform] = useState(game.platform || "TBD");
-  const [rating, setRating] = useState(game.rating || 0);
+  
+  // Usamos STRING para permitir campo vazio enquanto digita
+  const [rating, setRating] = useState(game.rating?.toString() || "");
   const [comments, setComments] = useState(game.comments || "");
   const [droppedReason, setDroppedReason] = useState(game.droppedReason || "");
   const [steamAppId, setSteamAppId] = useState(game.steamAppId || "");
-  const [timeMain, setTimeMain] = useState(game.timeMain || 0);
-  const [timeExtra, setTimeExtra] = useState(game.timeExtra || 0);
-  const [timeCompletionist, setTimeCompletionist] = useState(game.timeCompletionist || 0);
-  const [myGoal, setMyGoal] = useState(game.myGoal?.toString() || "1"); 
-  const [timePlayed, setTimePlayed] = useState(game.timePlayed || 0);
+
+  // Tempos (String também)
+  const [timeMain, setTimeMain] = useState(game.timeMain?.toString() || "");
+  const [timeExtra, setTimeExtra] = useState(game.timeExtra?.toString() || "");
+  const [timeCompletionist, setTimeCompletionist] = useState(game.timeCompletionist?.toString() || "");
+  const [timePlayed, setTimePlayed] = useState(game.timePlayed?.toString() || "");
+  
+  const [myGoal, setMyGoal] = useState(game.myGoal?.toString() || "1");
 
   useEffect(() => {
     if (open) {
         setPlatform(game.platform || "TBD");
-        setRating(game.rating || 0);
+        setRating(game.rating?.toString() || "");
         setComments(game.comments || "");
         setDroppedReason(game.droppedReason || "");
         setSteamAppId(game.steamAppId || "");
         
-        setTimeMain(game.timeMain || 0);
-        setTimeExtra(game.timeExtra || 0);
-        setTimeCompletionist(game.timeCompletionist || 0);
+        setTimeMain(game.timeMain?.toString() || "");
+        setTimeExtra(game.timeExtra?.toString() || "");
+        setTimeCompletionist(game.timeCompletionist?.toString() || "");
         setMyGoal(game.myGoal?.toString() || "1");
-        setTimePlayed(game.timePlayed || 0);
+        setTimePlayed(game.timePlayed?.toString() || "");
     }
   }, [open, game]);
+
+  // Helper para Inputs Numéricos (Bloqueia negativo)
+  const handleNumberInput = (value: string, setter: (val: string) => void, max?: number) => {
+    if (value === "") {
+        setter("");
+        return;
+    }
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    if (num < 0) return; // Bloqueia negativo
+    if (max !== undefined && num > max) return; // Bloqueia máximo (ex: nota 10)
+    
+    setter(value);
+  };
 
   const handleAutoSteam = async () => {
     setIsSearchingSteam(true);
@@ -86,13 +98,16 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
     try {
         const data = await gameService.findHltbTimes(game.title);
         if (data) {
-            setTimeMain(data.mainStory);
-            setTimeExtra(data.mainExtra);
-            setTimeCompletionist(data.completionist);
-            toast.success("Tempos do HLTB aplicados!");
+            // Atualiza os estados com os novos valores (convertendo para string)
+            setTimeMain(data.mainStory.toString());
+            setTimeExtra(data.mainExtra.toString());
+            setTimeCompletionist(data.completionist.toString());
+            toast.success("Tempos encontrados!");
+        } else {
+            toast.warning("Não encontrado na base de dados.");
         }
     } catch (error) {
-        toast.warning("Não encontrado no HowLongToBeat.");
+        toast.error("Erro ao buscar tempos.");
     } finally {
         setIsSearchingHltb(false);
     }
@@ -104,16 +119,17 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
       const updatedGame = {
         ...game,
         platform,
-        rating: Number(rating),
+        // Converte string para número ao salvar (vazio vira 0)
+        rating: rating === "" ? 0 : Number(rating),
         comments,
         steamAppId,
         droppedReason: game.status === 3 ? droppedReason : null,
         
-        timeMain: Number(timeMain),
-        timeExtra: Number(timeExtra),
-        timeCompletionist: Number(timeCompletionist),
+        timeMain: timeMain === "" ? 0 : Number(timeMain),
+        timeExtra: timeExtra === "" ? 0 : Number(timeExtra),
+        timeCompletionist: timeCompletionist === "" ? 0 : Number(timeCompletionist),
         myGoal: Number(myGoal),
-        timePlayed: Number(timePlayed)
+        timePlayed: timePlayed === "" ? 0 : Number(timePlayed)
       };
 
       await onUpdate(updatedGame);
@@ -164,12 +180,12 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right text-slate-400">Nota (0-10)</Label>
-                <Input 
-                    type="number" min={0} max={10} 
-                    value={rating} onChange={e => setRating(Number(e.target.value))} 
-                    className="col-span-3 bg-slate-900 border-slate-700 text-slate-200" 
-                />
+              <Label className="text-right text-slate-400">Nota (0-10)</Label>
+              <Input
+                value={rating}
+                onChange={e => handleNumberInput(e.target.value, setRating, 10)}
+                className="col-span-3 bg-slate-900 border-slate-700 text-slate-200"
+              />
             </div>
 
             {game.status === 3 && (
@@ -201,24 +217,36 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
                         className="h-6 text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
                     >
                         {isSearchingHltb ? <Loader2 size={12} className="animate-spin mr-1" /> : <Wand2 size={12} className="mr-1" />}
-                        Auto HLTB
+                        Auto Tempo
                     </Button>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                        <Label className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10}/> História</Label>
-                        <Input type="number" value={timeMain} onChange={e => setTimeMain(Number(e.target.value))} className="bg-slate-900 border-slate-700 text-center text-slate-200" />
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-[10px] text-slate-500 flex items-center gap-1"><Clock size={10}/> Main + Extra</Label>
-                        <Input type="number" value={timeExtra} onChange={e => setTimeExtra(Number(e.target.value))} className="bg-slate-900 border-slate-700 text-center text-slate-200" />
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-[10px] text-slate-500 flex items-center gap-1"><Trophy size={10}/> Platina</Label>
-                        <Input type="number" value={timeCompletionist} onChange={e => setTimeCompletionist(Number(e.target.value))} className="bg-slate-900 border-slate-700 text-center text-slate-200" />
-                    </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-slate-500 flex items-center gap-1"><BookOpen size={10} /> História</Label>
+                  <Input
+                    value={timeMain}
+                    onChange={e => handleNumberInput(e.target.value, setTimeMain)}
+                    className="bg-slate-900 border-slate-700 text-center text-slate-200"
+                  />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-slate-500 flex items-center gap-1"><Clock size={10} /> Main + Extra</Label>
+                  <Input
+                    value={timeExtra}
+                    onChange={e => handleNumberInput(e.target.value, setTimeExtra)}
+                    className="bg-slate-900 border-slate-700 text-center text-slate-200"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-slate-500 flex items-center gap-1"><Trophy size={10} /> Platina</Label>
+                  <Input
+                    value={timeCompletionist}
+                    onChange={e => handleNumberInput(e.target.value, setTimeCompletionist)}
+                    className="bg-slate-900 border-slate-700 text-center text-slate-200"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="border-t border-slate-800 my-4"></div>
@@ -231,7 +259,7 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
                         <RadioGroupItem value="0" id="goal-main" />
                         <Label htmlFor="goal-main" className="flex-1 cursor-pointer font-normal flex justify-between text-slate-300">
                             <span>Apenas História Principal</span>
-                            <span className="font-bold text-white">{timeMain}h</span>
+                            <span className="font-bold text-white">{timeMain || 0}h</span>
                         </Label>
                     </div>
 
@@ -239,7 +267,7 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
                         <RadioGroupItem value="1" id="goal-extra" />
                         <Label htmlFor="goal-extra" className="flex-1 cursor-pointer font-normal flex justify-between text-slate-300">
                             <span>História + Extras (Padrão)</span>
-                            <span className="font-bold text-white">{timeExtra}h</span>
+                            <span className="font-bold text-white">{timeExtra || 0}h</span>
                         </Label>
                     </div>
 
@@ -247,7 +275,7 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
                         <RadioGroupItem value="2" id="goal-comp" />
                         <Label htmlFor="goal-comp" className="flex-1 cursor-pointer font-normal flex justify-between text-slate-300">
                             <span>Completista / Platina</span>
-                            <span className="font-bold text-white">{timeCompletionist}h</span>
+                            <span className="font-bold text-white">{timeCompletionist || 0}h</span>
                         </Label>
                     </div>
                 </RadioGroup>
@@ -257,8 +285,9 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
                 <Label className="text-right text-slate-400">Jogado até agora</Label>
                 <div className="col-span-3 relative">
                     <Input 
-                        type="number" 
-                        value={timePlayed} onChange={e => setTimePlayed(Number(e.target.value))} 
+                        type="number" min={0}
+                        value={timePlayed} 
+                        onChange={e => handleNumberInput(e.target.value, setTimePlayed)} 
                         className="bg-slate-900 border-slate-700 text-slate-200 pr-12" 
                     />
                     <span className="absolute right-3 top-2.5 text-xs text-slate-500">Horas</span>

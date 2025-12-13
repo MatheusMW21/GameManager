@@ -73,7 +73,7 @@ public class IgdbService : IIgdbService
 
             var safeName = SanitizeQuery(gameName);
 
-            var queryGame = $"search \"{safeName}\"; fields name, cover.url; limit 1;";
+            var queryGame = $"search \"{safeName}\"; fields name, cover.url; where category = (0, 8, 9); limit 1;";
             var contentGame = new StringContent(queryGame, Encoding.UTF8, "text/plain");
             var responseGame = await client.PostAsync("https://api.igdb.com/v4/games", contentGame);
 

@@ -19,6 +19,9 @@ interface GameDetailsDialogProps {
 }
 
 export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
+  
+  // --- GARANTIA DE VALORES (Fix TypeScript Errors) ---
+  // Se vier undefined do banco, usamos 0 para evitar erros de cálculo
   const timeMain = game.timeMain || 0;
   const timeExtra = game.timeExtra || 0;
   const timeCompletionist = game.timeCompletionist || 0;
@@ -38,16 +41,20 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
     return "Wishlist";
   };
 
+  // Helper para verificar meta
   const isMyGoal = (goalIndex: number) => (game.myGoal === goalIndex);
 
+  // --- CÁLCULO DE PROGRESSO ---
   const getTargetTime = () => {
+      // Usa as constantes locais seguras (timeMain, etc) em vez de game.timeMain
       if (game.myGoal === 0) return timeMain; 
       if (game.myGoal === 2) return timeCompletionist; 
       return timeExtra; // Padrão
   };
 
-  const targetTime = getTargetTime() || 1; 
+  const targetTime = getTargetTime() || 1; // Evita divisão por zero
   
+  // Calcula a porcentagem (máximo 100%)
   const progressPercent = Math.min(100, Math.round((playedTime / targetTime) * 100));
 
   return (
@@ -58,6 +65,7 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
       
       <DialogContent className="bg-slate-950 border-slate-800 text-slate-100 sm:max-w-[750px] overflow-hidden p-0 gap-0">
         
+        {/* Banner */}
         <div 
             className="h-32 w-full bg-cover bg-center opacity-40 mask-image-gradient"
             style={{ 
@@ -160,6 +168,7 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
                     )}
 
                     {/* GRID HLTB */}
+                    {/* Agora usamos as variáveis locais seguras */}
                     {(timeMain > 0 || timeExtra > 0 || timeCompletionist > 0) && (
                         <div>
                             {!playedTime && ( 
