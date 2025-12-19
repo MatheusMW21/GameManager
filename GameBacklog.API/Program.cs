@@ -1,8 +1,11 @@
+using System.Text;
 using GameBacklog.API.Configuration;
 using GameBacklog.API.Data;
 using GameBacklog.API.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +44,27 @@ builder.Services.AddScoped<ISteamService, SteamService>();
 builder.Services.AddHttpClient("SteamClient");
 builder.Services.AddScoped<IHowLongToBeatService, HowLongToBeatService>();
 builder.Services.AddHttpClient("HLTB");
+builder.Services.AddScoped<AuthService>();
+
+var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:Key"]!);
+
+builder.Services.AddAuthentication(x =>
+{
+    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(x =>
+{
+    x.RequireHttpsMetadata = false;
+    x.SaveToken = true;
+    x.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false,
+        ValidateAudience = false
+    };
+});
 
 var app = builder.Build();
 
@@ -53,6 +77,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowNextJs");
+
+app.UseAuthentication();
 
 app.UseAuthorization(); 
 

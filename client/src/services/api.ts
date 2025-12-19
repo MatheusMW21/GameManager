@@ -13,6 +13,26 @@ export interface CreateGameDto {
     status: number; 
 }
 
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('gameboxd_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+export const authService = {
+    login: async (email: string, password: string) => {
+        const response = await api.post('/Auth/login', { email, password });
+        return response.data; 
+    },
+
+    register: async (name: string, email: string, password: string) => {
+        const response = await api.post('/Auth/register', { name, email, password });
+        return response.data;
+    }
+};
+
 export const gameService = {
     searchGames: async (query: string) => {
         const response = await api.get(`/ExternalGames/search?query=${query}`);

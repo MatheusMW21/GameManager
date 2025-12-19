@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<GameBacklogItem> Games { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
