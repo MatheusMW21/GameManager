@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('gameboxd_user');
         setToken(null);
         setUser(null);
-        toast.info("Você saiu da conta.");
         router.push('/'); 
     };
 

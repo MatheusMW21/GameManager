@@ -10,7 +10,9 @@ export interface CreateGameDto {
     coverUrl?: string;
     externalId?: string;
     platform: string;
-    status: number; 
+    status: number;
+    steamAppId?: string;
+    comments?: string;
 }
 
 api.interceptors.request.use((config) => {
@@ -24,7 +26,7 @@ api.interceptors.request.use((config) => {
 export const authService = {
     login: async (email: string, password: string) => {
         const response = await api.post('/Auth/login', { email, password });
-        return response.data; 
+        return response.data;
     },
 
     register: async (name: string, email: string, password: string) => {
@@ -34,19 +36,21 @@ export const authService = {
 };
 
 export const gameService = {
-    searchGames: async (query: string) => {
-        const response = await api.get(`/ExternalGames/search?query=${query}`);
-        return response.data;
-    },
-    addToBacklog: async (game: CreateGameDto) => {
-        const response = await api.post('/Game', game); 
-        return response.data;
-    },
-
-    getBacklog: async (): Promise<BacklogGame[]> => {
+    getAll: async (): Promise<BacklogGame[]> => {
         const response = await api.get('/Game');
         return response.data;
     },
+
+    create: async (game: CreateGameDto) => {
+        const response = await api.post('/Game', game);
+        return response.data;
+    },
+
+    update: async (id: number, game: any) => {
+        const response = await api.put(`/Game/${id}`, game);
+        return response.data;
+    },
+
     updateGame: async (id: number, game: any) => {
         const response = await api.put(`/Game/${id}`, game);
         return response.data;
@@ -59,16 +63,21 @@ export const gameService = {
 
     getSteamPrice: async (steamAppId: string) => {
         const response = await api.get(`/Steam/price/${steamAppId}`);
-        return response.data; 
+        return response.data;
     },
 
     findSteamId: async (gameName: string) => {
         const response = await api.get(`/Steam/search/${gameName}`);
-        return response.data.steamId; 
+        return response.data.steamId;
     },
 
     findHltbTimes: async (gameName: string) => {
         const response = await api.get(`/Hltb/search/${gameName}`);
-        return response.data; 
-}
+        return response.data;
+    },
+
+    searchGames: async (query: string) => {
+        const response = await api.get(`/ExternalGames/search?query=${query}`);
+        return response.data;
+    },
 }

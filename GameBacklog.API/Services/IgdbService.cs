@@ -17,6 +17,11 @@ public class IgdbService : IIgdbService
     private readonly IgdbSettings _settings;
     private readonly IMemoryCache _cache;
     private const string TOKEN_CACHE_KEY = "IgdbAccessToken";
+    
+    private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions 
+    { 
+        PropertyNameCaseInsensitive = true 
+    };
 
     public IgdbService(
         IHttpClientFactory httpClientFactory, 
@@ -44,15 +49,18 @@ public class IgdbService : IIgdbService
         if (!response.IsSuccessStatusCode) return new List<IgdbGameResponse>();
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
-        var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(jsonResponse);
+        
+        var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(jsonResponse, _jsonOptions);
 
         if (games != null)
         {
             foreach (var game in games)
             {
-                if (game.Cover != null)
+                if (game.Cover != null && !string.IsNullOrEmpty(game.Cover.Url))
                 {
-                    if (!game.Cover.Url.StartsWith("https:")) game.Cover.Url = "https:" + game.Cover.Url;
+                    if (!game.Cover.Url.StartsWith("https:")) 
+                        game.Cover.Url = "https:" + game.Cover.Url;
+                    
                     game.Cover.Url = game.Cover.Url.Replace("t_thumb", "t_cover_big");
                 }
             }
@@ -80,7 +88,8 @@ public class IgdbService : IIgdbService
             if (!responseGame.IsSuccessStatusCode) return null;
 
             var jsonGame = await responseGame.Content.ReadAsStringAsync();
-            var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(jsonGame);
+            
+            var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(jsonGame, _jsonOptions);
 
             if (games == null || games.Count == 0) return null;
 
@@ -98,7 +107,7 @@ public class IgdbService : IIgdbService
             if (responseTimes.IsSuccessStatusCode)
             {
                 var jsonTimes = await responseTimes.Content.ReadAsStringAsync();
-                var timesList = JsonSerializer.Deserialize<List<IgdbTimeToBeat>>(jsonTimes);
+                var timesList = JsonSerializer.Deserialize<List<IgdbTimeToBeat>>(jsonTimes, _jsonOptions);
                 if (timesList != null && timesList.Count > 0)
                 {
                     times = timesList[0];
@@ -166,7 +175,8 @@ public class IgdbService : IIgdbService
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
-        var tokenData = JsonSerializer.Deserialize<TwitchTokenResponse>(json);
+        
+        var tokenData = JsonSerializer.Deserialize<TwitchTokenResponse>(json, _jsonOptions);
 
         if (tokenData == null || string.IsNullOrEmpty(tokenData.AccessToken))
             throw new Exception("Falha ao autenticar na Twitch/IGDB");

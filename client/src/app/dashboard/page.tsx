@@ -1,57 +1,71 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { gameService } from '@/services/api';
-import { BacklogGame } from '@/types/game';
-import { EditGameDialog } from "@/components/EditGameDialog"; 
-import { GameDetailsDialog } from "@/components/GameDetailsDialog"; 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { gameService } from "@/services/api";
+import { BacklogGame } from "@/types/game";
+import { Navbar } from "@/components/Navbar";
+import { EditGameDialog } from "@/components/EditGameDialog";
+import { GameDetailsDialog } from "@/components/GameDetailsDialog";
 import { SteamPriceBadge } from "@/components/SteamPriceBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  Trash2, CheckCircle, Gamepad2, ArrowLeft, Clock, ClipboardList, 
-  Play, Check, Search, Filter, XCircle 
-} from "lucide-react";
+import { Trash2, CheckCircle, Gamepad2, Play, Search, Filter, XCircle, Ghost, Loader2, Plus } from "lucide-react";
 
 export default function Dashboard() {
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
   const [games, setGames] = useState<BacklogGame[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Estado do Filtro ('ALL', 'PLANNING', 'PLAYING', 'COMPLETED', 'DROPPED')
-  const [filter, setFilter] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    const token = localStorage.getItem('gameboxd_token');
+    if (!token && !isAuthenticated) {
+        router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   const loadGames = async () => {
     try {
-      const data = await gameService.getBacklog();
+      setLoading(true);
+      const data = await gameService.getAll();
       setGames(data);
     } catch (error) {
-      toast.error("Erro ao carregar seu backlog.");
+      toast.error("Erro ao carregar backlog.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadGames(); }, []);
+  useEffect(() => {
+    if (isAuthenticated) loadGames();
+  }, [isAuthenticated]);
 
-  // --- LÓGICA DE FILTRO ---
   const filteredGames = games.filter(game => {
-    if (filter === "ALL") return true;
-    if (filter === "PLANNING") return game.status === 0;
-    if (filter === "PLAYING") return game.status === 1;
-    if (filter === "COMPLETED") return game.status === 2;
-    if (filter === "DROPPED") return game.status === 3;
-    return true;
+    const matchesSearch = game.title.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesStatus = true;
+    if (statusFilter !== "all") {
+        matchesStatus = game.status.toString() === statusFilter;
+    }
+
+    return matchesSearch && matchesStatus;
   });
 
-  // --- AÇÕES ---
   const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que quer remover este jogo permanentemente?")) return;
+    if (!confirm("Remover este jogo permanentemente?")) return;
+    
     try {
       await gameService.deleteGame(id);
-      setGames(games.filter(g => g.id !== id));
+      setGames(prev => prev.filter(g => g.id !== id));
       toast.success("Jogo removido.");
     } catch (e) {
       toast.error("Erro ao remover.");
@@ -61,144 +75,99 @@ export default function Dashboard() {
   const handleStatusChange = async (game: BacklogGame, newStatus: number) => {
     try {
       const updatedGame = { ...game, status: newStatus };
+      setGames(prev => prev.map(g => g.id === game.id ? updatedGame : g));
+      
       await gameService.updateGame(game.id, updatedGame);
-      setGames(games.map(g => g.id === game.id ? updatedGame : g));
       
-      let statusText = "Atualizado";
-      if (newStatus === 1) statusText = "Status: Jogando";
-      if (newStatus === 2) statusText = "Status: Zerado";
-      if (newStatus === 3) statusText = "Status: Dropado";
-      
-      toast.success(statusText);
+      const statusMap: Record<number, string> = { 1: "Jogando", 2: "Zerado", 3: "Dropado" };
+      toast.success(`Status: ${statusMap[newStatus] || "Atualizado"}`);
     } catch (e) {
       toast.error("Erro ao atualizar status.");
+      loadGames();
     }
   };
 
   const handleUpdateFullGame = async (updatedGame: BacklogGame) => {
-    try {
-      await gameService.updateGame(updatedGame.id, updatedGame);
-      setGames(games.map(g => g.id === updatedGame.id ? updatedGame : g));
-      toast.success("Detalhes atualizados!");
-    } catch (e) {
-      toast.error("Erro ao salvar.");
-      throw e; 
-    }
+    setGames(prev => prev.map(g => g.id === updatedGame.id ? updatedGame : g));
+    await gameService.updateGame(updatedGame.id, updatedGame);
+    loadGames();
   };
 
-  // --- ESTATÍSTICAS ---
-  const stats = {
-    total: games.length,
-    playing: games.filter(g => g.status === 1).length,
-    completed: games.filter(g => g.status === 2).length,
-    planning: games.filter(g => g.status === 0).length,
-    dropped: games.filter(g => g.status === 3).length
-  };
+  if (!isAuthenticated) return null;
 
   return (
-    <main className="min-h-screen bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      <Navbar />
+
+      <main className="container mx-auto px-4 py-8 space-y-8">
         
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
-                <ArrowLeft size={20} />
-              </Button>
+        <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 border-b border-slate-800 pb-6">
+            <div>
+                <h1 className="text-3xl font-bold text-white tracking-tight">Painel de Controle</h1>
+                <p className="text-slate-400 text-sm mt-1">
+                    Bem-vindo, {user}. Você tem <span className="text-purple-400 font-bold">{games.length}</span> jogos registrados.
+                </p>
+            </div>
+            
+            <Link href="/discovery">
+                <Button className="bg-purple-600 hover:bg-purple-700 font-bold shadow-lg shadow-purple-900/20 gap-2">
+                    <Plus size={18} /> Novo Jogo
+                </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Meu Painel</h1>
-          </div>
-          <Link href="/">
-            <Button className="bg-purple-600 hover:bg-purple-700 font-bold shadow-lg shadow-purple-900/20">
-              + Novo Jogo
-            </Button>
-          </Link>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatsCard title="Total" value={stats.total} icon={<Gamepad2 className="text-purple-500 h-5 w-5" />} />
-          <StatsCard title="Jogando" value={stats.playing} icon={<Clock className="text-blue-500 h-5 w-5" />} />
-          <StatsCard title="Zerados" value={stats.completed} icon={<CheckCircle className="text-green-500 h-5 w-5" />} />
-          <StatsCard title="Wishlist" value={stats.planning} icon={<ClipboardList className="text-slate-500 h-5 w-5" />} />
+        <div className="flex flex-col sm:flex-row gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 text-slate-500" size={18} />
+                <Input 
+                    placeholder="Buscar no meu backlog..." 
+                    className="pl-10 h-10 bg-slate-950 border-slate-800 text-slate-200 focus-visible:ring-purple-500"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[200px] h-10 bg-slate-950 border-slate-800 text-slate-200 focus:ring-purple-500">
+                    <Filter className="mr-2 h-4 w-4 text-slate-400" />
+                    <SelectValue placeholder="Filtrar Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-950 border-slate-800 text-slate-200">
+                    <SelectItem value="all">Todos os Jogos</SelectItem>
+                    <SelectItem value="0">Planejando</SelectItem>
+                    <SelectItem value="1">Jogando</SelectItem>
+                    <SelectItem value="2">Zerados</SelectItem>
+                    <SelectItem value="3">Dropados</SelectItem>
+                </SelectContent>
+            </Select>
         </div>
 
-        {/* Filtros */}
-        <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-800 scrollbar-thin scrollbar-thumb-slate-800">
-           <FilterButton label="Todos" active={filter === "ALL"} onClick={() => setFilter("ALL")} />
-           <FilterButton label="Jogando" active={filter === "PLAYING"} onClick={() => setFilter("PLAYING")} count={stats.playing} />
-           <FilterButton label="Zerados" active={filter === "COMPLETED"} onClick={() => setFilter("COMPLETED")} count={stats.completed} />
-           <FilterButton label="Wishlist" active={filter === "PLANNING"} onClick={() => setFilter("PLANNING")} count={stats.planning} />
-           <FilterButton label="Dropados" active={filter === "DROPPED"} onClick={() => setFilter("DROPPED")} count={stats.dropped}/>
-        </div>
-
-        {/* Grid de Jogos */}
         {loading ? (
-            <div className="flex justify-center py-20">
-              <span className="text-slate-500 animate-pulse flex items-center gap-2">
-                <Clock size={16} /> Carregando...
-              </span>
+            <div className="flex justify-center items-center py-32">
+                <Loader2 className="animate-spin text-purple-500" size={48}/>
             </div>
         ) : filteredGames.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-slate-800 rounded-xl text-slate-500 bg-slate-900/50">
-                <Filter className="mx-auto h-12 w-12 mb-4 opacity-20" />
-                <p>Nenhum jogo encontrado neste filtro.</p>
-                {filter !== "ALL" && (
-                   <Button variant="link" onClick={() => setFilter("ALL")} className="text-purple-400">Ver todos</Button>
-                )}
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-900/20">
+                <Ghost size={48} className="mb-4 opacity-50" />
+                <p className="text-lg font-medium text-slate-400">Nenhum jogo encontrado.</p>
+                <p className="text-sm">
+                    {searchTerm ? "Tente buscar com outro termo." : "Adicione jogos ao seu backlog!"}
+                </p>
             </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {filteredGames.map(game => (
-              <DashboardGameCard 
-                key={game.id} 
-                game={game} 
-                onDelete={() => handleDelete(game.id)}
-                onStatusChange={(status) => handleStatusChange(game, status)}
-                onUpdate={handleUpdateFullGame}
-              />
-            ))}
-          </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {filteredGames.map(game => (
+                    <DashboardGameCard 
+                        key={game.id} 
+                        game={game} 
+                        onDelete={() => handleDelete(game.id)}
+                        onStatusChange={(status) => handleStatusChange(game, status)}
+                        onUpdate={handleUpdateFullGame}
+                    />
+                ))}
+            </div>
         )}
-      </div>
-    </main>
-  );
-}
-
-// --- SUB-COMPONENTES ---
-
-function FilterButton({ label, active, onClick, count }: any) {
-    return (
-        <button 
-            onClick={onClick}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap border
-                ${active 
-                    ? "bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-900/20" 
-                    : "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white"
-                }`}
-        >
-            {label}
-            {count !== undefined && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? "bg-purple-500/50" : "bg-slate-800"}`}>
-                    {count}
-                </span>
-            )}
-        </button>
-    )
-}
-
-function StatsCard({ title, value, icon }: any) {
-  return (
-    <Card className="bg-slate-900 border-slate-800 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs font-medium text-slate-400 uppercase tracking-wider">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-white truncate">{value}</div>
-      </CardContent>
-    </Card>
+      </main>
+    </div>
   );
 }
 
@@ -211,91 +180,91 @@ interface DashboardGameCardProps {
 
 function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: DashboardGameCardProps) {
   
-  const getStatusStyle = (s: number) => {
-    if (s === 1) return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    if (s === 2) return "bg-green-500/10 text-green-400 border-green-500/20";
-    if (s === 3) return "bg-red-500/10 text-red-400 border-red-500/20";
-    return "bg-slate-500/10 text-slate-400 border-slate-500/20";
-  };
-  
-  const getStatusText = (s: number) => {
-    if (s === 1) return "Jogando";
-    if (s === 2) return "Zerado";
-    if (s === 3) return "Dropado";
-    return "Wishlist";
+  const getStatusConfig = (s: number) => {
+    switch(s) {
+        case 1: return { text: "Jogando", class: "bg-blue-500/20 text-blue-400 border-blue-500/30" };
+        case 2: return { text: "Zerado", class: "bg-green-500/20 text-green-400 border-green-500/30" };
+        case 3: return { text: "Dropado", class: "bg-red-500/20 text-red-400 border-red-500/30" };
+        default: return { text: "Wishlist", class: "bg-slate-500/20 text-slate-400 border-slate-500/30" };
+    }
   };
 
+  const statusConfig = getStatusConfig(game.status);
+
   return (
-    <Card className="bg-slate-900 border-slate-800 overflow-hidden group flex flex-col h-full hover:border-purple-500/50 transition-all shadow-md">
+    <Card className="bg-slate-900 border-slate-800 overflow-hidden group flex flex-col h-full hover:border-purple-500/50 transition-all shadow-md relative">
         
-        {/* ENVOLVEMOS A IMAGEM COM O MODAL DE DETALHES */}
         <GameDetailsDialog game={game}>
-            <div className="relative h-40 bg-slate-950 cursor-pointer">
+            <div className="relative aspect-[3/4] bg-slate-950 cursor-pointer overflow-hidden">
                 {game.coverUrl ? (
-                    <img src={game.coverUrl} alt={game.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <img 
+                        src={game.coverUrl} 
+                        alt={game.title} 
+                        className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" 
+                    />
                 ) : (
-                    <div className="flex items-center justify-center h-full text-slate-600 bg-slate-900">
-                    <Gamepad2 size={32} opacity={0.5} />
+                    <div className="flex items-center justify-center h-full text-slate-700 bg-slate-950">
+                        <Gamepad2 size={40} strokeWidth={1} />
                     </div>
                 )}
                 
-                <Badge variant="outline" className={`absolute top-2 right-2 backdrop-blur-md ${getStatusStyle(game.status)}`}>
-                    {getStatusText(game.status)}
+                <Badge variant="outline" className={`absolute top-2 right-2 backdrop-blur-md shadow-sm border ${statusConfig.class}`}>
+                    {statusConfig.text}
                 </Badge>
 
                 {game.platform && game.platform !== "TBD" && (
-                <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] h-5 bg-black/80 text-white border-none">
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/80 text-white text-[10px] font-bold rounded uppercase tracking-wider">
                     {game.platform}
-                </Badge>
+                </div>
                 )}
             </div>
         </GameDetailsDialog>
         
-        <div className="p-4 flex-1 flex flex-col">
-            {/* ENVOLVEMOS O TÍTULO TAMBÉM */}
-            <GameDetailsDialog game={game}>
-                <h3 className="font-bold text-white truncate mb-1 text-lg cursor-pointer hover:text-purple-400 transition-colors" title={game.title}>
-                    {game.title}
-                </h3>
-            </GameDetailsDialog>
-            
-            <div className="flex items-center gap-3 text-xs text-slate-500 mb-4 h-5">
-              {game.rating && game.rating > 0 ? (
-                 <span className="text-yellow-500 font-bold flex items-center gap-1">★ {game.rating}</span>
-              ) : null}
-
-              {/* LÓGICA DE PREÇO AUTOMÁTICO - Só wishlist (0) */}
-              {game.status === 0 && game.steamAppId && (
-                 <SteamPriceBadge steamId={game.steamAppId} />
-              )}
+        <div className="p-3 flex-1 flex flex-col gap-2">
+            <div className="flex justify-between items-start gap-2">
+                <GameDetailsDialog game={game}>
+                    <h3 className="font-bold text-white text-sm leading-tight line-clamp-2 cursor-pointer hover:text-purple-400 transition-colors" title={game.title}>
+                        {game.title}
+                    </h3>
+                </GameDetailsDialog>
             </div>
             
-            <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-800">
+            <div className="flex items-center gap-3 text-xs text-slate-500 min-h-[20px]">
+                {game.rating && game.rating > 0 ? (
+                    <span className="text-yellow-500 font-bold flex items-center gap-1">★ {game.rating}</span>
+                ) : null}
+
+                {game.status === 0 && game.steamAppId && (
+                    <SteamPriceBadge steamId={game.steamAppId} />
+                )}
+            </div>
+            
+            <div className="mt-auto pt-3 border-t border-slate-800 flex items-center justify-between">
                 <div className="flex gap-1">
-                    {/* Botões de Ação */}
                     {game.status !== 1 && (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-950/30" onClick={() => onStatusChange(1)} title="Jogar">
-                           <Play size={16} />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => onStatusChange(1)} title="Marcar como Jogando">
+                           <Play size={14} />
                         </Button>
                     )}
                     {game.status !== 2 && (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-green-400 hover:bg-green-950/30" onClick={() => onStatusChange(2)} title="Zerar">
-                           <Check size={16} />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => onStatusChange(2)} title="Marcar como Zerado">
+                           <CheckCircle size={14} />
                         </Button>
                     )}
-                    {/* Botão DROP */}
                     {game.status !== 3 && (
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-400 hover:bg-red-950/30" onClick={() => onStatusChange(3)} title="Dropar (Desistir)">
-                           <XCircle size={16} />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-red-400 hover:bg-red-500/10" onClick={() => onStatusChange(3)} title="Marcar como Dropado">
+                           <XCircle size={14} />
                         </Button>
                     )}
-                    
-                    <EditGameDialog game={game} onUpdate={onUpdate} />
                 </div>
                 
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-600 hover:text-red-400 hover:bg-red-950/30" onClick={onDelete} title="Excluir Permanentemente">
-                    <Trash2 size={16} />
-                </Button>
+                <div className="flex gap-1">
+                    <EditGameDialog game={game} onUpdate={onUpdate} />
+                    
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-600 hover:text-red-500 hover:bg-red-500/10" onClick={onDelete} title="Excluir">
+                        <Trash2 size={14} />
+                    </Button>
+                </div>
             </div>
         </div>
     </Card>

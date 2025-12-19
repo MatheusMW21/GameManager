@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace GameBacklog.API.Models;
 
@@ -59,4 +60,9 @@ public class GameBacklogItem
         GameplayGoal.Completionist => TimeCompletionist,
         _ => 0
     };
+
+    public int UserId { get; set; }
+
+    [JsonIgnore] 
+    public User? User { get; set; }
 }
