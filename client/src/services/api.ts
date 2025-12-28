@@ -18,25 +18,16 @@ export interface CreateGameDto {
     timeCompletionist?: number;
 }
 
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('gameboxd_token');
+api.interceptors.request.use(async (config) => {
+    const token = await (window as any).Clerk?.session?.getToken();
+    
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
 });
 
-export const authService = {
-    login: async (email: string, password: string) => {
-        const response = await api.post('/Auth/login', { email, password });
-        return response.data;
-    },
-
-    register: async (name: string, email: string, password: string) => {
-        const response = await api.post('/Auth/register', { name, email, password });
-        return response.data;
-    }
-};
 
 export const gameService = {
     getAll: async (): Promise<BacklogGame[]> => {

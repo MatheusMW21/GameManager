@@ -1,11 +1,10 @@
-using System.Security.Claims;
-using GameBacklog.API.Data;
-using GameBacklog.API.Dtos;
-using GameBacklog.API.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using GameBacklog.API.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using GameBacklog.API.Data;
+using GameBacklog.API.Models;
+using GameBacklog.API.Services;
+using GameBacklog.API.Dtos;
 
 namespace GameBacklog.API.Controllers;
 
@@ -15,29 +14,24 @@ namespace GameBacklog.API.Controllers;
 public class GameController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly ISteamService _steamService;
     private readonly IIgdbService _igdbService;
+    private readonly ISteamService _steamService;
+    private readonly IUserContextService _userService;
 
-    public GameController(AppDbContext context, ISteamService steamService, IIgdbService igdbService)
+    public GameController(AppDbContext context, IIgdbService igdbService, ISteamService steamService, IUserContextService userService)
     {
         _context = context;
-        _steamService = steamService;
         _igdbService = igdbService;
+        _steamService = steamService;
+        _userService = userService;
     }
 
-    private int GetCurrentUserId()
-    {
-        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (idClaim == null) throw new UnauthorizedAccessException("Token inválido.");
-        return int.Parse(idClaim.Value);
-    }
-    
     [HttpGet]
     public async Task<ActionResult<IEnumerable<GameBacklogItem>>> GetGames()
     {
-        var userId = GetCurrentUserId();
+        var user = await _userService.GetCurrentUserAsync();
         return await _context.Games
-            .Where(g => g.UserId == userId)
+            .Where(g => g.UserId == user.Id)
             .OrderByDescending(g => g.CreatedAt)
             .ToListAsync();
     }
@@ -45,25 +39,25 @@ public class GameController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<GameBacklogItem>> GetGame(int id)
     {
-        var userId = GetCurrentUserId();
-        var game = await _context.Games
-            .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+        var user = await _userService.GetCurrentUserAsync();
+        var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == id && g.UserId == user.Id);
 
         if (game == null) return NotFound();
+
         return game;
     }
 
     [HttpPost]
     public async Task<ActionResult<GameBacklogItem>> CreateGame(CreateGameDto request)
     {
-        var userId = GetCurrentUserId();
-        
+        var user = await _userService.GetCurrentUserAsync();
+
         string? coverUrlToSave = request.CoverUrl;
         string? steamIdToSave = request.SteamAppId;
 
         if (string.IsNullOrEmpty(coverUrlToSave))
         {
-            try 
+            try
             {
                 var searchResults = await _igdbService.SearchGamesAsync(request.Title);
                 var firstMatch = searchResults.FirstOrDefault();
@@ -72,9 +66,7 @@ public class GameController : ControllerBase
                     coverUrlToSave = firstMatch.Cover.Url;
                 }
             }
-            catch 
-            {
-            }
+            catch { }
         }
 
         if (!string.IsNullOrEmpty(coverUrlToSave))
@@ -83,7 +75,6 @@ public class GameController : ControllerBase
             {
                 coverUrlToSave = "https:" + coverUrlToSave;
             }
-
             coverUrlToSave = coverUrlToSave.Replace("t_thumb", "t_cover_big");
         }
 
@@ -104,11 +95,11 @@ public class GameController : ControllerBase
             Comments = request.Comments,
             CoverUrl = coverUrlToSave,
             ExternalId = request.ExternalId,
-            SteamAppId = steamIdToSave, 
+            SteamAppId = steamIdToSave,
             CreatedAt = DateTime.UtcNow,
-            TimePlayed = 0,
+            TimePlayed = request.TimeMain ?? 0,
             EstimatedTime = 0,
-            UserId = userId 
+            UserId = user.Id
         };
 
         _context.Games.Add(game);
@@ -118,59 +109,22 @@ public class GameController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateGame(int id, [FromBody] GameBacklogItem game)
+    public async Task<IActionResult> UpdateGame(int id, GameBacklogItem request)
     {
-        if (id != game.Id) return BadRequest("ID incompatível.");
+        if (id != request.Id) return BadRequest();
 
-        var userId = GetCurrentUserId();
-        var existingGame = await _context.Games
-            .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+        var user = await _userService.GetCurrentUserAsync();
+        var existingGame = await _context.Games.FirstOrDefaultAsync(g => g.Id == id && g.UserId == user.Id);
 
         if (existingGame == null) return NotFound();
 
-        existingGame.Title = game.Title;
-        existingGame.Platform = game.Platform;
-        existingGame.Status = game.Status;
-        existingGame.Rating = game.Rating;
-        existingGame.Comments = game.Comments;
+        existingGame.Status = request.Status;
+        existingGame.Comments = request.Comments;
+        existingGame.Rating = request.Rating;
+        existingGame.TimePlayed = request.TimePlayed;
+        existingGame.Platform = request.Platform;
 
-        if (game.CoverUrl != existingGame.CoverUrl && !string.IsNullOrEmpty(game.CoverUrl))
-        {
-            var cleanUrl = game.CoverUrl;
-            if (cleanUrl.StartsWith("//")) cleanUrl = "https:" + cleanUrl;
-            cleanUrl = cleanUrl.Replace("t_thumb", "t_cover_big");
-            existingGame.CoverUrl = cleanUrl;
-        }
-        else 
-        {
-            existingGame.CoverUrl = game.CoverUrl;
-        }
-
-        existingGame.DroppedReason = game.DroppedReason;
-        existingGame.SteamAppId = game.SteamAppId;
-        existingGame.TimeMain = game.TimeMain;
-        existingGame.TimeExtra = game.TimeExtra;
-        existingGame.TimeCompletionist = game.TimeCompletionist;
-        existingGame.MyGoal = game.MyGoal;
-        existingGame.TimePlayed = game.TimePlayed;
-        existingGame.ExternalId = game.ExternalId;
-
-        if (game.Status == GameStatus.Completed && existingGame.CompletedAt == null)
-             existingGame.CompletedAt = DateTime.UtcNow;
-        else if (game.Status != GameStatus.Completed)
-             existingGame.CompletedAt = null;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!_context.Games.Any(e => e.Id == id && e.UserId == userId))
-                return NotFound();
-            else
-                throw;
-        }
+        await _context.SaveChangesAsync();
 
         return NoContent();
     }
@@ -178,9 +132,8 @@ public class GameController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteGame(int id)
     {
-        var userId = GetCurrentUserId();
-        var game = await _context.Games
-            .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+        var user = await _userService.GetCurrentUserAsync();
+        var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == id && g.UserId == user.Id);
 
         if (game == null) return NotFound();
 

@@ -25,4 +25,5 @@ export interface BacklogGame {
     timeCompletionist?: number;
     myGoal?: number; 
     timePlayed?: number;
+    externalId?: string;
 }

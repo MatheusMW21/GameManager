@@ -25,13 +25,10 @@ public class AuthService
         if (await _context.Users.AnyAsync(u => u.Email == email))
             return "Email já cadastrado.";
 
-        string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-
         var user = new User
         {
             Name = name,
             Email = email,
-            PasswordHash = passwordHash
         };
 
         _context.Users.Add(user);
@@ -43,10 +40,9 @@ public class AuthService
     public async Task<string> LoginAsync(string email, string password)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+        if (user == null)
             return "Credenciais inválidas.";
 
-        // Aqui você pode gerar um token JWT ou outra forma de autenticação
         return GenerateJwtToken(user);
     }
 

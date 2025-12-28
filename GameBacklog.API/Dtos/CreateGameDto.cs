@@ -25,4 +25,7 @@ public class CreateGameDto
     public string? DroppedReason { get; set; }
     [MaxLength(50)]
     public string? SteamAppId { get; set; }
+    public int? TimeMain { get; set; }
+    public int? TimeMainExtra { get; set; }
+    public int? TimeCompletionist { get; set; }
 }
