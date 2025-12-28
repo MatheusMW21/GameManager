@@ -8,6 +8,7 @@ using GameBacklog.API.Dtos.Igdb;
 using GameBacklog.API.DTOs;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using GTranslate.Translators;
 
 namespace GameBacklog.API.Services;
 
@@ -17,16 +18,14 @@ public class IgdbService : IIgdbService
     private readonly IgdbSettings _settings;
     private readonly IMemoryCache _cache;
     private const string TOKEN_CACHE_KEY = "IgdbAccessToken";
-    
+    private readonly GoogleTranslator _translator = new GoogleTranslator();
+
     private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions 
     { 
         PropertyNameCaseInsensitive = true 
     };
 
-    public IgdbService(
-        IHttpClientFactory httpClientFactory, 
-        IOptions<IgdbSettings> settings,
-        IMemoryCache cache)
+    public IgdbService(IHttpClientFactory httpClientFactory, IOptions<IgdbSettings> settings, IMemoryCache cache)
     {
         _httpClientFactory = httpClientFactory;
         _settings = settings.Value;
@@ -73,9 +72,7 @@ public class IgdbService : IIgdbService
         try
         {
             var token = await GetAccessTokenAsync();
-
             var client = _httpClientFactory.CreateClient();
-
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             client.DefaultRequestHeaders.Add("Client-ID", _settings.ClientId);
 
@@ -88,45 +85,48 @@ public class IgdbService : IIgdbService
             if (!responseGame.IsSuccessStatusCode) return null;
 
             var jsonGame = await responseGame.Content.ReadAsStringAsync();
-            
             var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(jsonGame, _jsonOptions);
 
             if (games == null || games.Count == 0) return null;
-
             var game = games[0];
+
+            if (game != null)
+            {
+                if (!string.IsNullOrEmpty(game.Summary))
+                {
+                    try 
+                    {
+                        var translation = await _translator.TranslateAsync(game.Summary, "pt");
+                        game.Summary = translation.Translation;
+                    }
+                    catch 
+                    {
+                    }
+                }
+            }
 
             var queryTimes = $"fields hastily, normally, completely; where game_id = {game.Id}; limit 1;";
             var contentTimes = new StringContent(queryTimes, Encoding.UTF8, "text/plain");
 
-            Console.WriteLine($"[IGDB] Buscando tempos para ID: {game.Id}...");
-
             var responseTimes = await client.PostAsync("https://api.igdb.com/v4/game_time_to_beats", contentTimes);
-
+            
             IgdbTimeToBeat? times = null;
 
             if (responseTimes.IsSuccessStatusCode)
             {
                 var jsonTimes = await responseTimes.Content.ReadAsStringAsync();
                 var timesList = JsonSerializer.Deserialize<List<IgdbTimeToBeat>>(jsonTimes, _jsonOptions);
+                
                 if (timesList != null && timesList.Count > 0)
-                {
                     times = timesList[0];
-                    Console.WriteLine("[IGDB] Tempos encontrados!");
-                }
-            }
-            else
-            {
-                var error = await responseTimes.Content.ReadAsStringAsync();
-                Console.WriteLine($"[IGDB Time Error] {responseTimes.StatusCode}: {error}");
             }
 
             return new HltbResultDto
             {
                 GameName = game.Name,
-                ImageUrl = game.Cover?.Url != null
-                    ? ("https:" + game.Cover.Url).Replace("t_thumb", "t_cover_big")
+                ImageUrl = game.Cover?.Url != null 
+                    ? ("https:" + game.Cover.Url).Replace("t_thumb", "t_cover_big") 
                     : null,
-
                 MainStory = ConvertSecondsToHours(times?.Hastily ?? 0),
                 MainExtra = ConvertSecondsToHours(times?.Normally ?? 0),
                 Completionist = ConvertSecondsToHours(times?.Completely ?? 0)
@@ -134,7 +134,7 @@ public class IgdbService : IIgdbService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IGDB Exception] {ex.Message}");
+            Console.WriteLine($"[IGDB Error] {ex.Message}");
             return null;
         }
     }
@@ -187,5 +187,51 @@ public class IgdbService : IIgdbService
         _cache.Set(TOKEN_CACHE_KEY, tokenData.AccessToken, cacheOptions);
 
         return tokenData.AccessToken;
+    }
+
+    public async Task<IgdbGameDetails?> GetGameDetailsAsync(int id)
+    {
+        var token = await GetAccessTokenAsync();
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        client.DefaultRequestHeaders.Add("Client-ID", _settings.ClientId);
+
+        var query = $"fields name, summary, first_release_date, category, aggregated_rating, " +
+                    $"cover.url, " +
+                    $"genres.name, " +
+                    $"platforms.name, " + 
+                    $"screenshots.url, " +
+                    $"involved_companies.company.name, involved_companies.developer, involved_companies.publisher; " +
+                    $"where id = {id};";
+
+        var content = new StringContent(query, Encoding.UTF8, "text/plain");
+        var response = await client.PostAsync("https://api.igdb.com/v4/games", content);
+
+        if (!response.IsSuccessStatusCode) return null;
+
+        var json = await response.Content.ReadAsStringAsync();
+        var games = JsonSerializer.Deserialize<List<IgdbGameDetails>>(json, _jsonOptions);
+
+        var game = games?.FirstOrDefault();
+
+        if (game != null)
+        {
+            if (game.Cover?.Url != null)
+            {
+                if (!game.Cover.Url.StartsWith("https:")) game.Cover.Url = "https:" + game.Cover.Url;
+                game.Cover.Url = game.Cover.Url.Replace("t_thumb", "t_cover_big"); 
+            }
+
+            if (game.Screenshots != null)
+            {
+                foreach (var shot in game.Screenshots)
+                {
+                    if (!shot.Url.StartsWith("https:")) shot.Url = "https:" + shot.Url;
+                    shot.Url = shot.Url.Replace("t_thumb", "t_1080p"); 
+                }
+            }
+        }
+
+        return game;
     }
 }

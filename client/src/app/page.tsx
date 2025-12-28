@@ -19,8 +19,8 @@ const TRENDING_GAMES = [
 
 const FRIENDS_ACTIVITY = [
     { user: "Diogo", action: "platinou", game: "Hollow Knight", time: "2h atrás", icon: "🏆" },
-    { user: "Ana", action: "comprou", game: "Stardew Valley", time: "5h atrás", icon: "💸" },
-    { user: "Lucas", action: "dropou", game: "Starfield", time: "1d atrás", icon: "💀" },
+    { user: "Bianca", action: "comprou", game: "Stardew Valley", time: "5h atrás", icon: "💸" },
+    { user: "Maurilio", action: "dropou", game: "Starfield", time: "1d atrás", icon: "💀" },
 ];
 
 export default function LandingPage() {
@@ -81,7 +81,7 @@ export default function LandingPage() {
             <div className="bg-slate-900/50 border-b border-slate-800">
                 <div className="container mx-auto px-4 py-12 flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-white mb-2">Olá, {user || "Gamer"}! 👋</h2>
+                        <h2 className="text-3xl font-bold text-white mb-2">Olá, {user || "Gamer"}! </h2>
                         <p className="text-slate-400">
                             Pronto para diminuir o backlog hoje?
                         </p>

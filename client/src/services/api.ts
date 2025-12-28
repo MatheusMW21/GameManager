@@ -13,6 +13,9 @@ export interface CreateGameDto {
     status: number;
     steamAppId?: string;
     comments?: string;
+    timeMain?: number;
+    timeExtra?: number;
+    timeCompletionist?: number;
 }
 
 api.interceptors.request.use((config) => {
@@ -72,12 +75,19 @@ export const gameService = {
     },
 
     findHltbTimes: async (gameName: string) => {
-        const response = await api.get(`/Hltb/search/${gameName}`);
-        return response.data;
+        const response = await api.get('/Hltb/search', {
+            params: { gameName } 
+        });
+        return response.data; 
     },
 
     searchGames: async (query: string) => {
         const response = await api.get(`/ExternalGames/search?query=${query}`);
+        return response.data;
+    },
+
+    getGameDetails: async (id: string) => {
+        const response = await api.get(`/ExternalGames/${id}`);
         return response.data;
     },
 }

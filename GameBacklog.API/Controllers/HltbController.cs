@@ -1,10 +1,12 @@
 using GameBacklog.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GameBacklog.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class HltbController : ControllerBase
 {
     private readonly IIgdbService _igdbService;
@@ -14,13 +16,17 @@ public class HltbController : ControllerBase
         _igdbService = igdbService;
     }
 
-    [HttpGet("search/{name}")]
-    public async Task<IActionResult> Search(string name)
+    [HttpGet("search")]
+    public async Task<IActionResult> GetTime([FromQuery] string? gameName) 
     {
-        var result = await _igdbService.GetGameTimeAsync(name);
-        
-        if (result == null) return NotFound("Tempos não encontrados na IGDB.");
-        
+        if (string.IsNullOrWhiteSpace(gameName)) 
+            return BadRequest("Nome do jogo é obrigatório.");
+
+        var result = await _igdbService.GetGameTimeAsync(gameName);
+
+        if (result == null)
+            return NotFound("Tempos não encontrados na base de dados.");
+
         return Ok(result);
     }
 }

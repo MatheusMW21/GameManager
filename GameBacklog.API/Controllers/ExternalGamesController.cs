@@ -1,31 +1,33 @@
-using GameBacklog.API.Dtos.Igdb;
 using GameBacklog.API.Services;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GameBacklog.API.Controllers
+namespace GameBacklog.API.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize]
+public class ExternalGamesController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ExternalGamesController : ControllerBase
+    private readonly IIgdbService _igdbService;
+
+    public ExternalGamesController(IIgdbService igdbService)
     {
-        private readonly IIgdbService _igdbService;
+        _igdbService = igdbService;
+    }
 
-        public ExternalGamesController(IIgdbService igdbService)
-        {
-            _igdbService = igdbService;
-        }
+    [HttpGet("search")]
+    public async Task<IActionResult> Search([FromQuery] string query)
+    {
+        var games = await _igdbService.SearchGamesAsync(query);
+        return Ok(games);
+    }
 
-        [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<IgdbGameResponse>>> SearchGames([FromQuery] string query)
-        {
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                return BadRequest("Query parameter is required.");
-            }
-
-            var results = await _igdbService.SearchGamesAsync(query);
-            return Ok(results);
-        }
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetDetails(int id)
+    {
+        var game = await _igdbService.GetGameDetailsAsync(id);
+        if (game == null) return NotFound();
+        return Ok(game);
     }
 }
