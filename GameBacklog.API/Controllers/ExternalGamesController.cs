@@ -23,11 +23,20 @@ public class ExternalGamesController : ControllerBase
         return Ok(games);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDetails(int id)
     {
         var game = await _igdbService.GetGameDetailsAsync(id);
         if (game == null) return NotFound();
         return Ok(game);
+    }
+
+    [AllowAnonymous] 
+    [HttpGet("popular")]
+    public async Task<IActionResult> GetPopular()
+    {
+        var games = await _igdbService.GetPopularGamesAsync();
+        return Ok(games);
     }
 }

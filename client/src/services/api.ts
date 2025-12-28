@@ -90,4 +90,9 @@ export const gameService = {
         const response = await api.get(`/ExternalGames/${id}`);
         return response.data;
     },
+
+    getPopularGames: async () => {
+        const response = await api.get('/ExternalGames/popular');
+        return response.data;
+    },
 }

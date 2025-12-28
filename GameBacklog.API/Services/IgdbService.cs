@@ -234,4 +234,36 @@ public class IgdbService : IIgdbService
 
         return game;
     }
+
+    public async Task<List<IgdbGameResponse>> GetPopularGamesAsync()
+    {
+        var token = await GetAccessTokenAsync();
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        client.DefaultRequestHeaders.Add("Client-ID", _settings.ClientId);
+
+        var query = "fields name, cover.url, first_release_date; where game_type = 0 & cover != null & rating_count > 50; sort popularity desc; limit 6;";
+        
+        var content = new StringContent(query, Encoding.UTF8, "text/plain");
+        var response = await client.PostAsync("https://api.igdb.com/v4/games", content);
+
+        if (!response.IsSuccessStatusCode) return new List<IgdbGameResponse>();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(json, _jsonOptions);
+
+        if (games != null)
+        {
+            foreach (var game in games)
+            {
+                if (game.Cover != null)
+                {
+                    if (!game.Cover.Url.StartsWith("https:")) game.Cover.Url = "https:" + game.Cover.Url;
+                    game.Cover.Url = game.Cover.Url.Replace("t_thumb", "t_cover_big");
+                }
+            }
+        }
+
+        return games ?? new List<IgdbGameResponse>();
+    }
 }

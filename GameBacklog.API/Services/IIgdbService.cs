@@ -11,4 +11,5 @@ public interface IIgdbService
     Task<HltbResultDto?> GetGameTimeAsync(string gameName);
 
     Task<IgdbGameDetails?> GetGameDetailsAsync(int id);
+    Task<List<IgdbGameResponse>> GetPopularGamesAsync();
 }
