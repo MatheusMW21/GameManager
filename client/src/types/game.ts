@@ -26,4 +26,15 @@ export interface BacklogGame {
     myGoal?: number; 
     timePlayed?: number;
     externalId?: string;
+    createdAt?: string;
+    completedAt?: string | null;
+}
+
+export interface Review {
+    id: number;
+    rating: number;
+    body?: string;
+    playedAt?: string | null;
+    createdAt: string;
+    updatedAt?: string | null;
 }

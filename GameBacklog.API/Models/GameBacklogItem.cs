@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace GameBacklog.API.Models;
 
@@ -65,4 +66,7 @@ public class GameBacklogItem
 
     [JsonIgnore] 
     public User? User { get; set; }
+
+    [JsonIgnore]
+    public ICollection<Review> Reviews { get; set; } = new List<Review>();
 }

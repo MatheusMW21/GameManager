@@ -14,23 +14,37 @@ import {
     PlayCircle, 
     Eye, 
     List, 
-    Star, 
-    BarChart3 
+    Star
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs"; 
 
-interface IgdbGame {
+interface FeedGame {
     id: number;
-    name: string;
-    cover?: { url: string };
+    title: string;
+    coverUrl?: string;
+    platform?: string;
+}
+
+interface FeedReview {
+    reviewId: number;
+    rating: number;
+    body?: string;
+    playedAt?: string | null;
+    createdAt: string;
+    gameId: number;
+    gameTitle: string;
+    gameCoverUrl?: string;
+    userId: number;
+    userName: string;
 }
 
 export default function LandingPage() {
     const { isSignedIn, user, isLoaded } = useUser();
     
-    const [popularGames, setPopularGames] = useState<IgdbGame[]>([]);
+    const [recentReviewedGames, setRecentReviewedGames] = useState<FeedGame[]>([]);
+    const [feedReviews, setFeedReviews] = useState<FeedReview[]>([]);
     const [myPlayingGames, setMyPlayingGames] = useState<BacklogGame[]>([]);
     const [loadingGames, setLoadingGames] = useState(true);
 
@@ -44,8 +58,11 @@ export default function LandingPage() {
 
     const fetchPublicData = async () => {
         try {
-            const popular = await gameService.getPopularGames();
-            setPopularGames(popular || []);
+            const recent = await gameService.getRecentReviewedGames(6);
+            setRecentReviewedGames(recent || []);
+
+            const reviews = await gameService.getFeedReviews(8);
+            setFeedReviews(reviews || []);
         } catch (error) {
             console.error("Erro ao buscar populares", error);
         } finally {
@@ -142,12 +159,12 @@ export default function LandingPage() {
                     <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
                         <div className="flex items-center gap-2">
                             <Flame className="text-orange-500" size={20} />
-                            <h2 className="text-sm font-bold text-slate-400 tracking-wider uppercase">Em Alta na Comunidade</h2>
+                            <h2 className="text-sm font-bold text-slate-400 tracking-wider uppercase">Jogos do Momento</h2>
                         </div>
                         <Link href="/discovery" className="text-xs text-slate-500 hover:text-white transition-colors">Ver mais</Link>
                     </div>
 
-                    {loadingGames && popularGames.length === 0 ? (
+                    {loadingGames && recentReviewedGames.length === 0 ? (
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
                             {[...Array(6)].map((_, i) => (
                                 <Skeleton key={i} className="aspect-[2/3] rounded bg-slate-900" />
@@ -155,11 +172,11 @@ export default function LandingPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
-                            {popularGames.map((game) => (
-                                <Link href={`/discovery/${game.id}`} key={game.id} className="group relative">
+                            {recentReviewedGames.map((game) => (
+                                <Link href="/dashboard" key={game.id} className="group relative">
                                     <div className="aspect-[2/3] rounded overflow-hidden border border-transparent group-hover:border-purple-500/50 bg-slate-900 relative transition-all shadow-lg group-hover:shadow-purple-900/20">
-                                        {game.cover?.url ? (
-                                            <img src={game.cover.url} alt={game.name} className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+                                        {game.coverUrl ? (
+                                            <img src={game.coverUrl} alt={game.title} className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center bg-slate-800"><Gamepad2 className="text-slate-600"/></div>
                                         )}
@@ -169,10 +186,56 @@ export default function LandingPage() {
                                     </div>
                                     <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-full left-0 right-0 text-center z-10 pointer-events-none">
                                         <span className="text-xs font-bold text-white bg-black/80 px-2 py-1 rounded whitespace-nowrap">
-                                            {game.name}
+                                            {game.title}
                                         </span>
                                     </div>
                                 </Link>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <section className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                        <div className="flex items-center gap-2">
+                            <Star className="text-yellow-500" size={20} />
+                            <h2 className="text-sm font-bold text-slate-400 tracking-wider uppercase">Reviews da Comunidade</h2>
+                        </div>
+                        <Link href="/dashboard" className="text-xs text-slate-500 hover:text-white transition-colors">Ver mais</Link>
+                    </div>
+
+                    {loadingGames && feedReviews.length === 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[...Array(4)].map((_, i) => (
+                                <Skeleton key={i} className="h-28 rounded bg-slate-900" />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {feedReviews.map((review) => (
+                                <div key={review.reviewId} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex gap-4">
+                                    <div className="w-16 h-24 bg-slate-800 rounded overflow-hidden flex-shrink-0">
+                                        {review.gameCoverUrl ? (
+                                            <img src={review.gameCoverUrl} alt={review.gameTitle} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Gamepad2 className="text-slate-600" size={20} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-sm font-bold text-white truncate">{review.gameTitle}</div>
+                                            <div className="text-yellow-400 text-xs font-bold flex items-center gap-1">
+                                                <Star size={12} /> {review.rating}/5
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-slate-500">por {review.userName}</div>
+                                        {review.body && (
+                                            <p className="text-sm text-slate-300 mt-2 line-clamp-3">{review.body}</p>
+                                        )}
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     )}

@@ -8,7 +8,7 @@ export default function Page() {
           formButtonPrimary: 'bg-purple-600 hover:bg-purple-700 text-sm normal-case',
           footerActionLink: 'text-purple-400 hover:text-purple-300'
         }
-      }} />
+      }} afterSignUpUrl="/" />
     </div>
   );
 }

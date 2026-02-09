@@ -16,6 +16,14 @@ export interface CreateGameDto {
     timeMain?: number;
     timeExtra?: number;
     timeCompletionist?: number;
+    timePlayed?: number;
+    myGoal?: number;
+}
+
+export interface CreateReviewDto {
+    rating: number;
+    body?: string;
+    playedAt?: string | null;
 }
 
 api.interceptors.request.use(async (config) => {
@@ -84,6 +92,26 @@ export const gameService = {
 
     getPopularGames: async () => {
         const response = await api.get('/ExternalGames/popular');
+        return response.data;
+    },
+
+    getReviews: async (gameId: number) => {
+        const response = await api.get(`/games/${gameId}/reviews`);
+        return response.data;
+    },
+
+    createReview: async (gameId: number, review: CreateReviewDto) => {
+        const response = await api.post(`/games/${gameId}/reviews`, review);
+        return response.data;
+    },
+
+    getFeedReviews: async (take = 8) => {
+        const response = await api.get(`/feed/reviews?take=${take}`);
+        return response.data;
+    },
+
+    getRecentReviewedGames: async (take = 6) => {
+        const response = await api.get(`/feed/recent-games?take=${take}`);
         return response.data;
     },
 }

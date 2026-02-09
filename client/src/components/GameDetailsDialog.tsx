@@ -1,12 +1,17 @@
 'use client';
 
-import { BacklogGame } from "@/types/game";
+import { useEffect, useMemo, useState } from "react";
+import { BacklogGame, Review } from "@/types/game";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area"; 
 import { SteamPriceBadge } from "./SteamPriceBadge";
-import { Gamepad2, Star, Quote, AlertOctagon, ExternalLink, Clock, Trophy, BookOpen, History } from "lucide-react";
+import { gameService } from "@/services/api";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Gamepad2, Star, Quote, AlertOctagon, ExternalLink, Clock, Trophy, BookOpen, History, Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 const STATUS_CONFIG = {
   0: { label: "Wishlist", color: "bg-slate-500/20 text-slate-400 border-slate-500/30" },
@@ -38,6 +43,15 @@ interface GameDetailsDialogProps {
 }
 
 export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [rating, setRating] = useState<number>(4);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [body, setBody] = useState("");
+  const [playedAt, setPlayedAt] = useState<string>("");
+
   const timeMain = game.timeMain || 0;
   const timeExtra = game.timeExtra || 0;
   const timeCompletionist = game.timeCompletionist || 0;
@@ -54,8 +68,93 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
   
   const statusInfo = STATUS_CONFIG[game.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG[0];
 
+  const interactiveRating = hoverRating ?? rating;
+
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return null;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return Math.round((sum / reviews.length) * 10) / 10;
+  }, [reviews]);
+
+  useEffect(() => {
+    if (!open) return;
+    const load = async () => {
+      setLoadingReviews(true);
+      try {
+        const data = await gameService.getReviews(game.id);
+        setReviews(data || []);
+      } catch {
+        toast.error("Erro ao carregar reviews.");
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    load();
+  }, [open, game.id]);
+
+  const handleCreateReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating < 1 || rating > 5 || rating % 0.5 !== 0) return;
+    setCreating(true);
+    try {
+      const created = await gameService.createReview(game.id, {
+        rating,
+        body: body.trim() ? body.trim() : undefined,
+        playedAt: playedAt ? playedAt : null,
+      });
+      setReviews(prev => [created, ...prev]);
+      setBody("");
+      setPlayedAt("");
+      setRating(4);
+      toast.success("Review salva.");
+    } catch {
+      toast.error("Erro ao salvar review.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const resolveHalfStep = (event: React.MouseEvent<HTMLButtonElement>, star: number) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const isLeftHalf = event.clientX - rect.left < rect.width / 2;
+    return isLeftHalf ? star - 0.5 : star;
+  };
+
+  const renderStar = (value: number, index: number, size = 24) => {
+    const position = index + 1;
+    const full = value >= position;
+    const half = !full && value >= position - 0.5;
+
+    if (half) {
+      return (
+        <span className="relative inline-block" style={{ width: size, height: size }}>
+          <Star
+            size={size}
+            className="absolute inset-0 text-slate-600"
+            strokeWidth={1.8}
+          />
+          <span className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: "50%" }}>
+            <Star
+              size={size}
+              className="text-cyan-300 fill-cyan-300"
+              strokeWidth={1.8}
+            />
+          </span>
+        </span>
+      );
+    }
+
+    return (
+      <Star
+        size={size}
+        className={full ? "text-cyan-300 fill-cyan-300" : "text-slate-600"}
+        strokeWidth={1.8}
+      />
+    );
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild className="cursor-pointer transition-opacity hover:opacity-80">
         {children}
       </DialogTrigger>
@@ -114,12 +213,14 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
                         </div>
                     </div>
 
-                    {/* Nota */}
-                    {game.rating && game.rating > 0 && (
+                    {/* Reviews */}
+                    {averageRating && (
                         <div className="flex flex-col items-end pl-4">
-                            <span className="text-yellow-500 font-bold text-3xl flex items-center gap-1">
-                                {game.rating}<span className="text-sm text-slate-600">/10</span>
+                            <span className="text-yellow-400 font-bold text-3xl flex items-center gap-2">
+                                <Star size={20} className="text-yellow-400" /> {averageRating}
+                                <span className="text-sm text-slate-600">/5</span>
                             </span>
+                            <span className="text-xs text-slate-500">{reviews.length} review(s)</span>
                         </div>
                     )}
                 </div>
@@ -176,13 +277,104 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
                     {game.comments && (
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                             <h4 className="text-slate-500 font-bold flex items-center gap-2 mb-2 text-xs uppercase tracking-wider">
-                                <Quote size={12} /> Minhas Anotações
+                                <Quote size={12} /> Anotações
                             </h4>
                             <ScrollArea className="max-h-[200px]">
                                 <p className="text-slate-300 whitespace-pre-wrap leading-relaxed text-sm">{game.comments}</p>
                             </ScrollArea>
                         </div>
                     )}
+                </div>
+
+                {/* Reviews */}
+                <div className="mt-8 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-slate-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+                            <Star size={12} /> Reviews
+                        </h4>
+                        {averageRating && (
+                            <div className="text-xs text-slate-500">
+                                Média: <span className="text-yellow-400 font-bold">{averageRating}/5</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <form onSubmit={handleCreateReview} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-950/70 px-2 py-1.5"
+                                onMouseLeave={() => setHoverRating(null)}
+                            >
+                                {[1, 2, 3, 4, 5].map((star, index) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        className="rounded-sm p-0.5 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                                        onMouseMove={(e) => setHoverRating(resolveHalfStep(e, star))}
+                                        onClick={(e) => setRating(resolveHalfStep(e, star))}
+                                        aria-label={`Dar nota ${star} estrelas`}
+                                        title={`Nota ${star}`}
+                                    >
+                                        {renderStar(interactiveRating, index)}
+                                    </button>
+                                ))}
+                            </div>
+                            <span className="text-sm text-slate-300 font-semibold min-w-[56px]">
+                                {interactiveRating.toFixed(1)}/5
+                            </span>
+                        </div>
+
+                        <Textarea
+                            value={body}
+                            onChange={e => setBody(e.target.value)}
+                            className="bg-slate-950 border-slate-800"
+                            placeholder="Sua opinião sobre o jogo..."
+                        />
+
+                        <div className="flex items-center gap-3">
+                            <Input
+                                type="date"
+                                value={playedAt}
+                                onChange={e => setPlayedAt(e.target.value)}
+                                className="bg-slate-950 border-slate-800"
+                            />
+                            <Button type="submit" className="bg-purple-600 hover:bg-purple-700 font-bold gap-2" disabled={creating}>
+                                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                Salvar review
+                            </Button>
+                        </div>
+                    </form>
+
+                    <div className="space-y-3">
+                        {loadingReviews && (
+                            <div className="text-slate-500 text-sm flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Carregando reviews...
+                            </div>
+                        )}
+                        {!loadingReviews && reviews.length === 0 && (
+                            <div className="text-slate-500 text-sm">Nenhuma review ainda. Seja o primeiro.</div>
+                        )}
+                        {reviews.map(r => (
+                            <div key={r.id} className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="text-yellow-400 font-bold flex items-center gap-2">
+                                        <div className="flex items-center gap-0.5">
+                                            {[1, 2, 3, 4, 5].map((star, index) => (
+                                                <span key={star}>{renderStar(r.rating, index, 14)}</span>
+                                            ))}
+                                        </div>
+                                        <span>{r.rating}/5</span>
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                        {r.playedAt ? `Jogado em ${r.playedAt}` : ""}
+                                    </div>
+                                </div>
+                                {r.body && (
+                                    <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{r.body}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

@@ -25,7 +25,8 @@ import {
     XCircle, 
     Ghost, 
     Loader2, 
-    Plus 
+    Plus,
+    Heart 
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -62,6 +63,11 @@ export default function Dashboard() {
 
     return matchesSearch && matchesStatus;
   });
+
+  const lastPlayed = [...games]
+    .filter(g => g.status === 2)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+    .slice(0, 4);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Remover este jogo permanentemente?")) return;
@@ -117,12 +123,33 @@ export default function Dashboard() {
                 </p>
             </div>
             
-            <Link href="/discovery">
-                <Button className="bg-purple-600 hover:bg-purple-700 font-bold shadow-lg shadow-purple-900/20 gap-2">
-                    <Plus size={18} /> Novo Jogo
-                </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+                <Link href="/wishlist">
+                    <Button variant="outline" className="border-slate-700 text-slate-200 hover:bg-slate-800 gap-2">
+                        <Heart size={16} /> Wishlist
+                    </Button>
+                </Link>
+                <Link href="/discovery">
+                    <Button className="bg-purple-600 hover:bg-purple-700 font-bold shadow-lg shadow-purple-900/20 gap-2">
+                        <Plus size={18} /> Novo Jogo
+                    </Button>
+                </Link>
+            </div>
         </div>
+
+        {lastPlayed.length > 0 && (
+            <section className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-bold text-slate-400 tracking-wider uppercase">Últimos Jogados</h2>
+                    <Link href="/dashboard" className="text-xs text-slate-500 hover:text-white transition-colors">Ver todos</Link>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {lastPlayed.map(game => (
+                        <LastPlayedCard key={game.id} game={game} />
+                    ))}
+                </div>
+            </section>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
             <div className="relative flex-1">
@@ -232,11 +259,7 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
                     </div>
                     
                     <div className="flex items-center gap-3 text-xs text-slate-500 min-h-[20px]">
-                        {game.rating && game.rating > 0 ? (
-                            <span className="text-yellow-500 font-bold flex items-center gap-1">★ {game.rating}</span>
-                        ) : (
-                            <span className="text-slate-600 text-[10px]">Sem nota</span>
-                        )}
+                        <span className="text-slate-600 text-[10px]">Reviews no detalhe</span>
                     </div>
                 </div>
             </div>
@@ -270,6 +293,30 @@ function DashboardGameCard({ game, onDelete, onStatusChange, onUpdate }: Dashboa
                 </Button>
             </div>
         </div>
+    </Card>
+  );
+}
+
+function LastPlayedCard({ game }: { game: BacklogGame }) {
+  return (
+    <Card className="bg-slate-900 border-slate-800 overflow-hidden group flex items-center gap-3 p-3 hover:border-purple-500/50 transition-all">
+      <div className="w-12 h-16 bg-slate-950 rounded overflow-hidden flex-shrink-0">
+        {game.coverUrl ? (
+          <img
+            src={game.coverUrl}
+            alt={game.title}
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-700">
+            <Gamepad2 size={20} strokeWidth={1} />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-white truncate">{game.title}</div>
+        <div className="text-[10px] text-slate-500">{game.platform || "TBD"}</div>
+      </div>
     </Card>
   );
 }

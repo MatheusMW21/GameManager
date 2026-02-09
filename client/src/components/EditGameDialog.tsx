@@ -26,7 +26,6 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
     const [title, setTitle] = useState(game.title);
     const [platform, setPlatform] = useState(game.platform || "TBD");
     const [status, setStatus] = useState(game.status.toString());
-    const [rating, setRating] = useState(game.rating?.toString() || "");
     const [coverUrl] = useState(game.coverUrl || ""); 
     const [steamAppId, setSteamAppId] = useState(game.steamAppId || "");
     const [comments, setComments] = useState(game.comments || "");
@@ -48,7 +47,6 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
             title,
             platform,
             status: Number(status),
-            rating: rating ? Number(rating) : undefined,
             coverUrl, 
             steamAppId,
             comments,
@@ -164,15 +162,10 @@ export function EditGameDialog({ game, onUpdate }: EditGameDialogProps) {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Sua Nota (0-10)</Label>
-                                    <Input 
-                                        type="number" min="0" max="10" step="0.5"
-                                        value={rating} 
-                                        onChange={e => setRating(e.target.value)} 
-                                        onFocus={(e) => e.target.select()}
-                                        className="bg-slate-900 border-slate-700 font-bold" 
-                                        placeholder="-"
-                                    />
+                                    <Label>Reviews ficam no detalhe</Label>
+                                    <div className="text-xs text-slate-500 bg-slate-900 border border-slate-800 rounded px-3 py-2">
+                                        Adicione suas reviews no painel de detalhes do jogo.
+                                    </div>
                                 </div>
                             </div>
                         </TabsContent>

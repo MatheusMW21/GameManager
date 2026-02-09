@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace GameBacklog.API.Models;
 
@@ -9,4 +10,6 @@ public class User
     public string Email { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? ClerkId { get; set; }
+
+    public ICollection<Review> Reviews { get; set; } = new List<Review>();
 }

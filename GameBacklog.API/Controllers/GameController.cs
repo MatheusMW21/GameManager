@@ -97,7 +97,11 @@ public class GameController : ControllerBase
             ExternalId = request.ExternalId,
             SteamAppId = steamIdToSave,
             CreatedAt = DateTime.UtcNow,
-            TimePlayed = request.TimeMain ?? 0,
+            TimePlayed = request.TimePlayed ?? 0,
+            TimeMain = request.TimeMain ?? 0,
+            TimeExtra = request.TimeExtra ?? 0,
+            TimeCompletionist = request.TimeCompletionist ?? 0,
+            MyGoal = request.MyGoal ?? GameplayGoal.MainPlusExtras,
             EstimatedTime = 0,
             UserId = user.Id
         };
@@ -109,20 +113,26 @@ public class GameController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateGame(int id, GameBacklogItem request)
+    public async Task<IActionResult> UpdateGame(int id, UpdateGameDto request)
     {
-        if (id != request.Id) return BadRequest();
-
         var user = await _userService.GetCurrentUserAsync();
         var existingGame = await _context.Games.FirstOrDefaultAsync(g => g.Id == id && g.UserId == user.Id);
 
         if (existingGame == null) return NotFound();
 
+        existingGame.Title = request.Title;
         existingGame.Status = request.Status;
         existingGame.Comments = request.Comments;
         existingGame.Rating = request.Rating;
-        existingGame.TimePlayed = request.TimePlayed;
+        existingGame.TimePlayed = request.TimePlayed ?? existingGame.TimePlayed;
         existingGame.Platform = request.Platform;
+        existingGame.DroppedReason = request.DroppedReason;
+        existingGame.SteamAppId = request.SteamAppId;
+        existingGame.TimeMain = request.TimeMain ?? existingGame.TimeMain;
+        existingGame.TimeExtra = request.TimeExtra ?? existingGame.TimeExtra;
+        existingGame.TimeCompletionist = request.TimeCompletionist ?? existingGame.TimeCompletionist;
+        existingGame.MyGoal = request.MyGoal ?? existingGame.MyGoal;
+        existingGame.CoverUrl = request.CoverUrl ?? existingGame.CoverUrl;
 
         await _context.SaveChangesAsync();
 

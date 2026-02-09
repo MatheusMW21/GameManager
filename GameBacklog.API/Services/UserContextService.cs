@@ -30,6 +30,13 @@ public class UserContextService : IUserContextService
         var email = userPrincipal?.FindFirst(ClaimTypes.Email)?.Value 
                  ?? userPrincipal?.FindFirst("email")?.Value;
 
+        var name = userPrincipal?.FindFirst(ClaimTypes.Name)?.Value
+                 ?? userPrincipal?.FindFirst("name")?.Value
+                 ?? userPrincipal?.FindFirst("given_name")?.Value
+                 ?? userPrincipal?.FindFirst("preferred_username")?.Value
+                 ?? userPrincipal?.FindFirst("username")?.Value
+                 ?? email?.Split('@')[0];
+
         if (string.IsNullOrEmpty(clerkId))
         {
             throw new UnauthorizedAccessException("Usuário não autenticado. Token Clerk inválido ou ausente.");
@@ -43,12 +50,20 @@ public class UserContextService : IUserContextService
             {
                 ClerkId = clerkId,
                 Email = email ?? $"user_{clerkId.Substring(0, 8)}@gamebacklog.com",
-                Name = "Matheus", 
+                Name = string.IsNullOrWhiteSpace(name) ? "Player" : name,
 
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(name) && (string.IsNullOrWhiteSpace(user.Name) || user.Name == "Player"))
+            {
+                user.Name = name;
+                await _context.SaveChangesAsync();
+            }
         }
 
         return user;

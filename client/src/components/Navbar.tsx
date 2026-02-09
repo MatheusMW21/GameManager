@@ -3,6 +3,7 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { Gamepad2 } from "lucide-react";
+import { QuickLogDialog } from "./QuickLogDialog";
 
 export function Navbar() {
     const { isSignedIn, user } = useUser();
@@ -10,7 +11,7 @@ export function Navbar() {
     return (
         <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-md sticky top-0 z-50">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                <Link href="/dashboard" className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2">
                     <Gamepad2 className="text-purple-500" size={24} />
                     <span className="font-bold text-xl tracking-tight text-white">GameManager</span>
                 </Link>
@@ -25,6 +26,7 @@ export function Navbar() {
                     
                     {isSignedIn ? (
                         <div className="flex items-center gap-4">
+                            <QuickLogDialog />
                             <span className="text-sm text-slate-400 hidden md:block">Olá, {user.firstName}</span>
                             <UserButton afterSignOutUrl="/" />
                         </div>
