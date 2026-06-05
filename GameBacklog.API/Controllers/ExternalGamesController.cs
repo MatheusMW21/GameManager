@@ -16,6 +16,7 @@ public class ExternalGamesController : ControllerBase
         _igdbService = igdbService;
     }
 
+    [AllowAnonymous]
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string query)
     {
