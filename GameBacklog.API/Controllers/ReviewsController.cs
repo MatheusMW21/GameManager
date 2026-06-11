@@ -90,7 +90,12 @@ public class ReviewsController : ControllerBase
 
         if (request.Rating.HasValue) existingReview.Rating = request.Rating.Value;
         if (request.Body != null) existingReview.Body = request.Body;
-        if (request.PlayedAt.HasValue) existingReview.PlayedAt = request.PlayedAt;
+        if (request.PlayedAt.HasValue) {
+            var value = request.PlayedAt.Value;
+            existingReview.PlayedAt = value.Kind == DateTimeKind.Utc
+                ? value
+                : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        }
         existingReview.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

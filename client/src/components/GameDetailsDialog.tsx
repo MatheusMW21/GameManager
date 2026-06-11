@@ -120,6 +120,13 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
 
   const interactiveRating = hoverRating ?? rating;
 
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return null;
     const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
@@ -522,7 +529,7 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
                 {reviews.map((r) => (
                   <div
                     key={r.id}
-                    className="bg-slate-900/40 border border-slate-800 rounded-xl p-4"
+                    className="bg-slate-900/40 border border-slate-800 border-l-2 border-l-purple-500 rounded-xl p-4"
                   >
                     {editingId === r.id ? (
                       <div className="space-y-3">
@@ -593,9 +600,11 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
                             </div>
                             <span>{r.rating}/5</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3 ml-4">
                             <span className="text-xs text-slate-500">
-                              {r.playedAt ? `Jogado em ${r.playedAt}` : ""}
+                              {r.playedAt
+                                ? `Jogado em ${formatDate(r.playedAt)}`
+                                : ""}
                             </span>
                             <button
                               onClick={() => {
