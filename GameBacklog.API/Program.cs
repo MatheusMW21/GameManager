@@ -1,4 +1,3 @@
-using System.Text;
 using GameBacklog.API.Configuration;
 using GameBacklog.API.Data;
 using GameBacklog.API.Services;
@@ -44,11 +43,8 @@ builder.Services.AddScoped<ISteamService, SteamService>();
 builder.Services.AddHttpClient("SteamClient");
 builder.Services.AddScoped<IHowLongToBeatService, HowLongToBeatService>();
 builder.Services.AddHttpClient("HLTB");
-builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
-
-var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:Key"]!);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

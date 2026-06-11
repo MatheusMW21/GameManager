@@ -78,4 +78,38 @@ public class ReviewsController : ControllerBase
 
         return CreatedAtAction(nameof(List), new { gameId }, result);
     }
+
+    [HttpPut("/api/games/{gameId}/reviews/{id}")]
+    public async Task<ActionResult> UpdateReview(int id, UpdateReviewDto request)
+    {
+        var user = await _userService.GetCurrentUserAsync();
+
+        var existingReview = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id && r.UserId == user.Id);
+
+        if (existingReview == null) return NotFound ();
+
+        if (request.Rating.HasValue) existingReview.Rating = request.Rating.Value;
+        if (request.Body != null) existingReview.Body = request.Body;
+        if (request.PlayedAt.HasValue) existingReview.PlayedAt = request.PlayedAt;
+        existingReview.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("/api/games/{gameId}/reviews/{id}")]
+    public async Task<ActionResult> DeleteReview(int id)
+    {
+        var user = await _userService.GetCurrentUserAsync();
+        var review = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id && r.UserId == user.Id);
+
+        if (review == null) return NotFound();
+
+        _context.Reviews.Remove(review);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+
+    }
 }

@@ -26,6 +26,12 @@ export interface CreateReviewDto {
     playedAt?: string | null;
 }
 
+export interface UpdateReviewDto {
+    rating?: number;
+    body?: string;
+    playedAt?: string | null;
+}
+
 api.interceptors.request.use(async (config) => {
     const token = await (window as any).Clerk?.session?.getToken();
     
@@ -104,6 +110,17 @@ export const gameService = {
         const response = await api.post(`/games/${gameId}/reviews`, review);
         return response.data;
     },
+
+    updateReview: async (gameId: number, id: number, review: UpdateReviewDto) => {
+        const response = await api.put(`/games/${gameId}/reviews/${id}`, review);
+        return response.data;
+    },
+
+    deleteReview: async (gameId: number, id: number) => {
+        const response = await api.delete(`/games/${gameId}/reviews/${id}`);
+        return response.data;
+    },
+
 
     getFeedReviews: async (take = 8) => {
         const response = await api.get(`/feed/reviews?take=${take}`);
