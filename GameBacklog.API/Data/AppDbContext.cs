@@ -32,7 +32,7 @@ public class AppDbContext : DbContext
             .HasOne(r => r.Game)
             .WithMany(g => g.Reviews)
             .HasForeignKey(r => r.GameBacklogItemId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Review>()
             .HasOne(r => r.User)

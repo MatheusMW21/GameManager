@@ -30,9 +30,9 @@ public class FeedController : ControllerBase
                 r.Body,
                 r.PlayedAt,
                 r.CreatedAt,
-                r.GameBacklogItemId,
-                r.Game!.Title,
-                r.Game.CoverUrl,
+                r.IgdbGameId,
+                r.GameTitle,
+                r.GameCoverUrl,    
                 r.UserId,
                 r.User!.Name
             ))
@@ -44,31 +44,20 @@ public class FeedController : ControllerBase
     [HttpGet("recent-games")]
     public async Task<ActionResult<IEnumerable<object>>> GetRecentReviewedGames([FromQuery] int take = 6)
     {
-        var recentGameIds = await _context.Reviews
-            .GroupBy(r => r.GameBacklogItemId)
-            .Select(g => new { GameId = g.Key, LastReviewAt = g.Max(x => x.CreatedAt) })
+        var recentGames = await _context.Reviews
+            .GroupBy(r => r.IgdbGameId)
+            .Select(g => new 
+            {
+                igdbGameId = g.Key,
+                title = g.OrderByDescending(r => r.CreatedAt).Select(r => r.GameTitle).FirstOrDefault(),
+                coverUrl = g.OrderByDescending(r => r.CreatedAt).Select(r => r.GameCoverUrl).FirstOrDefault(), 
+                LastReviewAt = g.Max(r => r.CreatedAt) 
+            })
             .OrderByDescending(x => x.LastReviewAt)
             .Take(take)
             .ToListAsync();
+        
+        return Ok(recentGames);
 
-        var ids = recentGameIds.Select(x => x.GameId).ToList();
-
-        var games = await _context.Games
-            .Where(g => ids.Contains(g.Id))
-            .Select(g => new
-            {
-                id = g.Id,
-                title = g.Title,
-                coverUrl = g.CoverUrl,
-                platform = g.Platform
-            })
-            .ToListAsync();
-
-        var order = recentGameIds.Select((x, i) => new { x.GameId, i })
-            .ToDictionary(x => x.GameId, x => x.i);
-
-        var ordered = games.OrderBy(g => order[g.id]).ToList();
-
-        return Ok(ordered);
     }
 }

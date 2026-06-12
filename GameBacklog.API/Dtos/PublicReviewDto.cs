@@ -9,7 +9,7 @@ public record PublicReviewDto(
     DateTime? PlayedAt,
     DateTime CreatedAt,
     int GameId,
-    string GameTitle,
+    string? GameTitle,
     string? GameCoverUrl,
     int UserId,
     string UserName

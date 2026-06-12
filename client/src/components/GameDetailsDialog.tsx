@@ -158,6 +158,9 @@ export function GameDetailsDialog({ game, children }: GameDetailsDialogProps) {
         rating,
         body: body.trim() ? body.trim() : undefined,
         playedAt: playedAt ? playedAt : null,
+        igdbGameId: game.externalId ? parseInt(game.externalId, 10) : undefined,
+        gameTitle: game.title,
+        gameCoverUrl: game.coverUrl,
       });
       setReviews((prev) => [created, ...prev]);
       setBody("");

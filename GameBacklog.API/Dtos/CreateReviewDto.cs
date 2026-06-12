@@ -12,4 +12,7 @@ public class CreateReviewDto
     public string? Body { get; set; }
 
     public DateTime? PlayedAt { get; set; }
+    public int IgdbGameId { get; set; }
+    public string? GameTitle { get; set; }
+    public string? GameCoverUrl { get; set; }
 }

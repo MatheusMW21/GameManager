@@ -33,7 +33,16 @@ public class ReviewsController : ControllerBase
         var reviews = await _context.Reviews
             .Where(r => r.GameBacklogItemId == gameId && r.UserId == user.Id)
             .OrderByDescending(r => r.CreatedAt)
-            .Select(r => new ReviewDto(r.Id, r.Rating, r.Body, r.PlayedAt, r.CreatedAt, r.UpdatedAt))
+            .Select(r => new ReviewDto(
+                r.Id, 
+                r.Rating, 
+                r.Body, 
+                r.PlayedAt, 
+                r.CreatedAt, 
+                r.UpdatedAt, 
+                r.IgdbGameId, 
+                r.GameTitle,
+                r.GameCoverUrl))
             .ToListAsync();
 
         return Ok(reviews);
@@ -68,13 +77,25 @@ public class ReviewsController : ControllerBase
             PlayedAt = playedAtUtc,
             GameBacklogItemId = gameId,
             UserId = user.Id,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            IgdbGameId = dto.IgdbGameId,
+            GameTitle = dto.GameTitle,
+            GameCoverUrl = dto.GameCoverUrl
         };
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
 
-        var result = new ReviewDto(review.Id, review.Rating, review.Body, review.PlayedAt, review.CreatedAt, review.UpdatedAt);
+        var result = new ReviewDto(
+            review.Id, 
+            review.Rating, 
+            review.Body, 
+            review.PlayedAt, 
+            review.CreatedAt, 
+            review.UpdatedAt, 
+            review.IgdbGameId, 
+            review.GameTitle, 
+            review.GameCoverUrl);
 
         return CreatedAtAction(nameof(List), new { gameId }, result);
     }

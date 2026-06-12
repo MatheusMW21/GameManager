@@ -8,5 +8,8 @@ public record ReviewDto(
     string? Body,
     DateTime? PlayedAt,
     DateTime CreatedAt,
-    DateTime? UpdatedAt
+    DateTime? UpdatedAt,
+    int IgdbGameId,
+    string? GameTitle,
+    string? GameCoverUrl
 );

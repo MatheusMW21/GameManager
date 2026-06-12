@@ -19,7 +19,7 @@ public class Review
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
-    public int GameBacklogItemId { get; set; }
+    public int? GameBacklogItemId { get; set; }
 
     [JsonIgnore]
     public GameBacklogItem? Game { get; set; }
@@ -28,4 +28,7 @@ public class Review
 
     [JsonIgnore]
     public User? User { get; set; }
+    public int IgdbGameId { get; set; }
+    public string? GameTitle { get; set; }
+    public string? GameCoverUrl { get; set; }
 }
