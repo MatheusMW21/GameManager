@@ -78,9 +78,10 @@ public class ReviewsController : ControllerBase
             GameBacklogItemId = gameId,
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
-            IgdbGameId = dto.IgdbGameId,
-            GameTitle = dto.GameTitle,
-            GameCoverUrl = dto.GameCoverUrl
+            IgdbGameId = dto.IgdbGameId != 0 ? dto.IgdbGameId
+                : (int.TryParse(game.ExternalId, out var parsed) ? parsed : 0),
+            GameTitle = game.Title,
+            GameCoverUrl = game.CoverUrl
         };
 
         _context.Reviews.Add(review);
