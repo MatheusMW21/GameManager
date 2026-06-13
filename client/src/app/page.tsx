@@ -168,8 +168,8 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                Pare de esquecer em qual fase você parou. Organize seu backlog,
-                descubra novos jogos e acompanhe seu progresso em um só lugar.
+                Registre cada jogo que você jogou. Organize seu backlog, escreva
+                reviews e mantenha um diário das suas partidas em um só lugar.
               </p>
               <div className="mt-10">
                 <Link href="/sign-up">

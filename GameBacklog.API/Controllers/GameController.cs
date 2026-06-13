@@ -27,13 +27,17 @@ public class GameController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<GameBacklogItem>>> GetGames()
+    public async Task<IActionResult> GetGames([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var user = await _userService.GetCurrentUserAsync();
-        return await _context.Games
+        var query = _context.Games
             .Where(g => g.UserId == user.Id)
-            .OrderByDescending(g => g.CreatedAt)
-            .ToListAsync();
+            .OrderByDescending(g => g.CreatedAt);
+
+        var total = await query.CountAsync();
+        var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+        return Ok(new PagedResults<GameBacklogItem>(data, page, pageSize, total));
     }
 
     [HttpGet("{id}")]
