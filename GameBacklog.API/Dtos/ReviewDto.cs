@@ -11,5 +11,6 @@ public record ReviewDto(
     DateTime? UpdatedAt,
     int IgdbGameId,
     string? GameTitle,
-    string? GameCoverUrl
+    string? GameCoverUrl,
+    int? GameBacklogItemId
 );

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { BacklogGame } from "../types/game";
+import { BacklogGame, Review } from "../types/game";
 
 export const api = axios.create({
   baseURL: "http://localhost:5282/api",
@@ -126,5 +126,10 @@ export const gameService = {
   getRecentReviewedGames: async (take = 6) => {
     const response = await api.get(`/feed/recent-games?take=${take}`);
     return response.data;
+  },
+
+  getDiary: async () => {
+    const response = await api.get(`/diary`);
+    return response.data as Review[];
   },
 };

@@ -40,4 +40,5 @@ export interface Review {
   igdbGameId: number;
   gameTitle?: string | null;
   gameCoverUrl?: string | null;
+  gameBacklogItemId?: number | null;
 }

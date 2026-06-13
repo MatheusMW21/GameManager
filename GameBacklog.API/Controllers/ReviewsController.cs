@@ -42,7 +42,8 @@ public class ReviewsController : ControllerBase
                 r.UpdatedAt, 
                 r.IgdbGameId, 
                 r.GameTitle,
-                r.GameCoverUrl))
+                r.GameCoverUrl,
+                r.GameBacklogItemId))
             .ToListAsync();
 
         return Ok(reviews);
@@ -96,7 +97,8 @@ public class ReviewsController : ControllerBase
             review.UpdatedAt, 
             review.IgdbGameId, 
             review.GameTitle, 
-            review.GameCoverUrl);
+            review.GameCoverUrl,
+            review.GameBacklogItemId);
 
         return CreatedAtAction(nameof(List), new { gameId }, result);
     }
