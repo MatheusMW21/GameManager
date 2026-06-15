@@ -48,7 +48,7 @@ api.interceptors.request.use(async (config) => {
 export const gameService = {
   getAll: async (): Promise<BacklogGame[]> => {
     const response = await api.get("/Game");
-    return response.data;
+    return response.data.data;
   },
 
   create: async (game: CreateGameDto) => {
@@ -100,7 +100,7 @@ export const gameService = {
 
   getReviews: async (gameId: number) => {
     const response = await api.get(`/games/${gameId}/reviews`);
-    return response.data;
+    return response.data.data;
   },
 
   createReview: async (gameId: number, review: CreateReviewDto) => {
@@ -119,17 +119,17 @@ export const gameService = {
   },
 
   getFeedReviews: async (take = 8) => {
-    const response = await api.get(`/feed/reviews?take=${take}`);
-    return response.data;
+    const response = await api.get(`/feed/reviews?pageSize=${take}`);
+    return response.data.data;
   },
 
   getRecentReviewedGames: async (take = 6) => {
-    const response = await api.get(`/feed/recent-games?take=${take}`);
-    return response.data;
+    const response = await api.get(`/feed/recent-games?pageSize=${take}`);
+    return response.data.data;
   },
 
   getDiary: async () => {
     const response = await api.get(`/diary`);
-    return response.data as Review[];
+    return response.data.data as Review[];
   },
 };

@@ -22,11 +22,11 @@ public class DiaryController : ControllerBase
   }
 
   [HttpGet]
-  public async Task<ActionResult<IEnumerable<ReviewDto>>> GetReviews() 
+  public async Task<IActionResult> GetReviews([FromQuery] int page = 1, [FromQuery] int pageSize = 20) 
   {
     var user = await _userService.GetCurrentUserAsync();
     
-    var reviews = await _context.Reviews
+    var query = _context.Reviews
       .Where(r => r.UserId == user.Id)
       .OrderByDescending(r => r.PlayedAt ?? r.CreatedAt)
       .Select(r => new ReviewDto(
@@ -40,8 +40,11 @@ public class DiaryController : ControllerBase
       r.GameTitle,
       r.GameCoverUrl,
       r.GameBacklogItemId
-    )).ToListAsync();
+    ));
+
+    var total = await query.CountAsync();
+    var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
     
-    return Ok(reviews);
+    return Ok(new PagedResults<ReviewDto>(data, page, pageSize, total));
   }
 }

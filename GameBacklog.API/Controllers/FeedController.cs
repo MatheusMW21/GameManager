@@ -19,11 +19,10 @@ public class FeedController : ControllerBase
     }
 
     [HttpGet("reviews")]
-    public async Task<ActionResult<IEnumerable<PublicReviewDto>>> GetRecentReviews([FromQuery] int take = 8)
+    public async Task<IActionResult> GetRecentReviews([FromQuery] int page = 1, [FromQuery] int pageSize = 8)
     {
-        var reviews = await _context.Reviews
+        var query = _context.Reviews
             .OrderByDescending(r => r.CreatedAt)
-            .Take(take)
             .Select(r => new PublicReviewDto(
                 r.Id,
                 r.Rating,
@@ -35,29 +34,35 @@ public class FeedController : ControllerBase
                 r.GameCoverUrl,    
                 r.UserId,
                 r.User!.Name
-            ))
-            .ToListAsync();
+            ));
 
-        return Ok(reviews);
+        var total = await query.CountAsync();
+        var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+        return Ok(new PagedResults<PublicReviewDto>(data, page, pageSize, total)); 
     }
 
     [HttpGet("recent-games")]
-    public async Task<ActionResult<IEnumerable<object>>> GetRecentReviewedGames([FromQuery] int take = 6)
+    public async Task<IActionResult> GetRecentReviewedGames([FromQuery] int page = 1, [FromQuery] int pageSize = 8)
     {
-        var recentGames = await _context.Reviews
-            .GroupBy(r => r.IgdbGameId)
-            .Select(g => new 
-            {
-                igdbGameId = g.Key,
-                title = g.OrderByDescending(r => r.CreatedAt).Select(r => r.GameTitle).FirstOrDefault(),
-                coverUrl = g.OrderByDescending(r => r.CreatedAt).Select(r => r.GameCoverUrl).FirstOrDefault(), 
-                LastReviewAt = g.Max(r => r.CreatedAt) 
-            })
-            .OrderByDescending(x => x.LastReviewAt)
-            .Take(take)
+        var raw = await _context.Reviews
+            .Select(r => new { r.IgdbGameId, r.GameTitle, r.GameCoverUrl, r.CreatedAt })
             .ToListAsync();
-        
-        return Ok(recentGames);
+    
+        var grouped = raw
+            .GroupBy(r => r.IgdbGameId)
+            .Select(g => new RecentGameDto(
+                g.Key,
+                g.OrderByDescending(r => r.CreatedAt).Select(r => r.GameTitle).FirstOrDefault(),
+                g.OrderByDescending(r => r.CreatedAt).Select(r => r.GameCoverUrl).FirstOrDefault(),
+                g.Max(r => r.CreatedAt)
+            ))
+            .OrderByDescending(x => x.LastReviewAt)
+            .ToList();
 
+        var total = grouped.Count;
+        var data = grouped.Skip((page - 1) * pageSize).Take(pageSize);
+
+        return Ok(new PagedResults<RecentGameDto>(data, page, pageSize, total));
     }
 }
