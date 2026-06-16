@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
@@ -19,6 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
+import { useQuery } from "@tanstack/react-query";
 
 interface FeedGame {
   id: number;
@@ -44,46 +44,24 @@ interface FeedReview {
 export default function LandingPage() {
   const { isSignedIn, user, isLoaded } = useUser();
 
-  const [recentReviewedGames, setRecentReviewedGames] = useState<FeedGame[]>(
-    []
-  );
-  const [feedReviews, setFeedReviews] = useState<FeedReview[]>([]);
-  const [myPlayingGames, setMyPlayingGames] = useState<BacklogGame[]>([]);
-  const [loadingGames, setLoadingGames] = useState(true);
+  const { data: recentReviewedGames = [], isLoading: loadingGames } = useQuery({
+    queryKey: ["feed-recent-games"],
+    queryFn: () => gameService.getRecentReviewedGames(6),
+  });
 
-  useEffect(() => {
-    fetchPublicData();
+  const { data: feedReviews = [], isLoading: loadingReviews } = useQuery({
+    queryKey: ["feed-reviews"],
+    queryFn: () => gameService.getFeedReviews(8),
+  });
 
-    if (isSignedIn) {
-      fetchUserData();
-    }
-  }, [isSignedIn]);
-
-  const fetchPublicData = async () => {
-    try {
-      const recent = await gameService.getRecentReviewedGames(6);
-      setRecentReviewedGames(recent || []);
-
-      const reviews = await gameService.getFeedReviews(8);
-      setFeedReviews(reviews || []);
-    } catch (error) {
-      console.error("Erro ao buscar populares", error);
-    } finally {
-      if (!isSignedIn) setLoadingGames(false);
-    }
-  };
-
-  const fetchUserData = async () => {
-    try {
+  const { data: myPlayingGames = [] } = useQuery<BacklogGame[]>({
+    queryKey: ["my-playing-games"],
+    queryFn: async () => {
       const allGames = await gameService.getAll();
-      const playing = allGames.filter((g: any) => g.status === 1).slice(0, 4);
-      setMyPlayingGames(playing);
-    } catch (error) {
-      console.error("Erro user data", error);
-    } finally {
-      setLoadingGames(false);
-    }
-  };
+      return allGames.filter((g: BacklogGame) => g.status === 1).slice(0, 4);
+    },
+    enabled: !!isSignedIn,
+  });
 
   if (!isLoaded) return <div className="min-h-screen bg-slate-950" />;
 
@@ -201,7 +179,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {loadingGames && recentReviewedGames.length === 0 ? (
+          {loadingGames ? (
             <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
               {[...Array(6)].map((_, i) => (
                 <Skeleton
@@ -261,7 +239,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {loadingGames && feedReviews.length === 0 ? (
+          {loadingReviews ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[...Array(4)].map((_, i) => (
                 <Skeleton key={i} className="h-28 rounded bg-slate-900" />
