@@ -1,10 +1,8 @@
-using System.Collections;
 using GameBacklog.API.Data;
 using GameBacklog.API.Dtos;
 using GameBacklog.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameBacklog.API.Controllers;
 
@@ -67,6 +65,31 @@ public class ProfileController : ControllerBase
             user.FavGame4CoverUrl = dto.CoverUrl;
             break;
     }
+    await _context.SaveChangesAsync();
+    return NoContent();
+  }
+
+[HttpPut("favorites")]
+  public async Task<ActionResult> UpdateAllFavorites([FromBody] UpdateAllFavoritesDto dto)
+  {
+    var user = await _userService.GetCurrentUserAsync();
+
+    user.FavGame1IgdbID = dto.Slot1?.IgdbGameId;
+    user.FavGame1Title = dto.Slot1?.Title;
+    user.FavGame1CoverUrl = dto.Slot1?.CoverUrl;
+
+    user.FavGame2IgdbID = dto.Slot2?.IgdbGameId;
+    user.FavGame2Title = dto.Slot2?.Title;
+    user.FavGame2CoverUrl = dto.Slot2?.CoverUrl;
+
+    user.FavGame3IgdbID = dto.Slot3?.IgdbGameId;
+    user.FavGame3Title = dto.Slot3?.Title;
+    user.FavGame3CoverUrl = dto.Slot3?.CoverUrl;
+
+    user.FavGame4IgdbID = dto.Slot4?.IgdbGameId;
+    user.FavGame4Title = dto.Slot4?.Title;
+    user.FavGame4CoverUrl = dto.Slot4?.CoverUrl;
+
     await _context.SaveChangesAsync();
     return NoContent();
   }

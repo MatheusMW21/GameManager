@@ -1,5 +1,5 @@
 import axios from "axios";
-import { BacklogGame, Review, UserProfile } from "../types/game";
+import { BacklogGame, FavoriteGame, Review, UserProfile } from "../types/game";
 
 export const api = axios.create({
   baseURL: "http://localhost:5282/api",
@@ -128,8 +128,9 @@ export const gameService = {
     return response.data.data;
   },
 
-  getDiary: async () => {
-    const response = await api.get(`/diary`);
+  getDiary: async (pageSize?: number) => {
+    const url = pageSize ? `/diary?pageSize=${pageSize}` : `/diary`;
+    const response = await api.get(url);
     return response.data.data as Review[];
   },
 
@@ -147,5 +148,14 @@ export const gameService = {
     }
   ) => {
     await api.put(`/Profile/favorites/${slot}`, data);
+  },
+
+  updateAllFavorites: async (slots: (FavoriteGame | null)[]) => {
+    await api.put(`/Profile/favorites`, {
+      slot1: slots[0] ?? null,
+      slot2: slots[1] ?? null,
+      slot3: slots[2] ?? null,
+      slot4: slots[3] ?? null,
+    });
   },
 };
