@@ -1,5 +1,3 @@
-using System;
-
 namespace GameBacklog.API.Dtos;
 
 public record PublicReviewDto(

@@ -23,7 +23,7 @@ export function Navbar() {
             href="/dashboard"
             className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
           >
-            Dashboard
+            Backlog
           </Link>
           <Link
             href="/discovery"
@@ -36,6 +36,12 @@ export function Navbar() {
             className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
           >
             Diário
+          </Link>
+          <Link
+            href="/profile"
+            className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+          >
+            Perfil
           </Link>
 
           {isSignedIn ? (

@@ -42,3 +42,18 @@ export interface Review {
   gameCoverUrl?: string | null;
   gameBacklogItemId?: number | null;
 }
+
+export interface FavoriteGame {
+  igdbGameId: number;
+  title?: string | null;
+  coverUrl?: string | null;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  fav1?: FavoriteGame | null;
+  fav2?: FavoriteGame | null;
+  fav3?: FavoriteGame | null;
+  fav4?: FavoriteGame | null;
+}

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { BacklogGame, Review } from "../types/game";
+import { BacklogGame, Review, UserProfile } from "../types/game";
 
 export const api = axios.create({
   baseURL: "http://localhost:5282/api",
@@ -131,5 +131,21 @@ export const gameService = {
   getDiary: async () => {
     const response = await api.get(`/diary`);
     return response.data.data as Review[];
+  },
+
+  getProfile: async (): Promise<UserProfile> => {
+    const response = await api.get("/Profile");
+    return response.data;
+  },
+
+  updateFavoriteSlot: async (
+    slot: number,
+    data: {
+      igdbGameId: number | null;
+      title?: string | null;
+      coverUrl?: string | null;
+    }
+  ) => {
+    await api.put(`/Profile/favorites/${slot}`, data);
   },
 };
