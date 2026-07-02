@@ -1,8 +1,10 @@
 using GameBacklog.API.Data;
 using GameBacklog.API.Dtos;
 using GameBacklog.API.Services;
+using GameBacklog.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace GameBacklog.API.Controllers;
 
@@ -69,7 +71,7 @@ public class ProfileController : ControllerBase
     return NoContent();
   }
 
-[HttpPut("favorites")]
+  [HttpPut("favorites")]
   public async Task<ActionResult> UpdateAllFavorites([FromBody] UpdateAllFavoritesDto dto)
   {
     var user = await _userService.GetCurrentUserAsync();
@@ -92,5 +94,22 @@ public class ProfileController : ControllerBase
 
     await _context.SaveChangesAsync();
     return NoContent();
+  }
+
+  [HttpGet("stats")]
+  public async Task<ActionResult> GetStats()
+  {
+    var user = await _userService.GetCurrentUserAsync();
+
+    var totalGames = await _context.Games
+      .CountAsync(g => g.UserId == user.Id);
+
+    var completed = await _context.Games
+      .CountAsync(g => g.UserId == user.Id && g.Status == GameStatus.Completed);
+
+    var totalReviews = await _context.Reviews
+      .CountAsync(r => r.UserId == user.Id);
+    
+    return Ok(new { totalGames, completed, totalReviews });
   }
 }

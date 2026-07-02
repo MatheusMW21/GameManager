@@ -158,4 +158,13 @@ export const gameService = {
       slot4: slots[3] ?? null,
     });
   },
+
+  getProfileStats: async (): Promise<{
+    totalGames: number;
+    completed: number;
+    totalReviews: number;
+  }> => {
+    const response = await api.get("/Profile/stats");
+    return response.data;
+  },
 };
