@@ -98,9 +98,11 @@ export const gameService = {
     return response.data;
   },
 
-  getReviews: async (gameId: number) => {
-    const response = await api.get(`/games/${gameId}/reviews`);
-    return response.data.data;
+  getReviews: async (gameId: number, pageSize = 20) => {
+    const response = await api.get(
+      `/games/${gameId}/reviews?pageSize=${pageSize}`
+    );
+    return response.data.data as Review[];
   },
 
   createReview: async (gameId: number, review: CreateReviewDto) => {

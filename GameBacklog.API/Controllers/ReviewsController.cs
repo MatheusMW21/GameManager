@@ -23,14 +23,14 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ReviewDto>>> List(int gameId)
+    public async Task<ActionResult<PagedResults<ReviewDto>>> List(int gameId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var user = await _userService.GetCurrentUserAsync();
 
         var gameExists = await _context.Games.AnyAsync(g => g.Id == gameId && g.UserId == user.Id);
         if (!gameExists) return NotFound();
 
-        var reviews = await _context.Reviews
+        var query = _context.Reviews
             .Where(r => r.GameBacklogItemId == gameId && r.UserId == user.Id)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new ReviewDto(
@@ -43,10 +43,12 @@ public class ReviewsController : ControllerBase
                 r.IgdbGameId, 
                 r.GameTitle,
                 r.GameCoverUrl,
-                r.GameBacklogItemId))
-            .ToListAsync();
+                r.GameBacklogItemId));
 
-        return Ok(reviews);
+        var total = await query.CountAsync();
+        var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+        return Ok(new PagedResults<ReviewDto>(data, page, pageSize, total));
     }
 
     [HttpPost]
